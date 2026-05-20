@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Store.Models;
+namespace Store.Dtos;
 
-public class Category : BaseEntity
+public class UpdateCategoryDto
 {
 	[Required]
 	[MaxLength(100)]
@@ -11,7 +11,5 @@ public class Category : BaseEntity
 	[MaxLength(500)]
 	public string? Description { get; set; }
 
-	public bool IsActive { get; set; } = true;
-
-	public ICollection<Product> Products { get; set; } = new List<Product>();
+	public bool IsActive { get; set; }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Store.Data;
+using Store.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +13,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
