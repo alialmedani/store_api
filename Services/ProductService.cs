@@ -14,33 +14,64 @@ public class ProductService : IProductService
 		_context = context;
 	}
 
-	public async Task<List<ProductDto>> GetAllAsync()
+	public async Task<PagedResultDto<ProductDto>> GetAllAsync(PagedRequestDto input)
 	{
-		var products = await _context.Products
-			.Include(product => product.Category)
+		var query = _context.Products.AsQueryable();
+
+		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+		{
+			var searchTerm = input.SearchTerm.Trim();
+
+			query = query.Where(product =>
+				product.Name.Contains(searchTerm) ||
+				(product.Description != null && product.Description.Contains(searchTerm)) ||
+				product.Category.Name.Contains(searchTerm));
+		}
+
+		query = ApplySorting(query, input.Sorting);
+
+		var totalCount = await query.CountAsync();
+
+		var pagedQuery = ApplyPaging(query, input);
+
+		var items = await pagedQuery
 			.Select(product => new ProductDto
 			{
 				Id = product.Id,
 				Name = product.Name,
 				Description = product.Description,
 				Price = product.Price,
-				StockQuantity = product.StockQuantity,
+				TotalStockQuantity = product.Variants
+					.Where(variant => !variant.IsDeleted)
+					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-				TargetAudience = product.TargetAudience,
-				CategoryId = product.CategoryId,
-				CategoryName = product.Category.Name,
+
+				Category = new LookupDto
+				{
+					Id = product.CategoryId,
+					Name = product.Category.Name
+				},
+
+				TargetAudience = new LookupDto
+				{
+					Id = (int)product.TargetAudience,
+					Name = product.TargetAudience.ToString()
+				},
+
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
 			.ToListAsync();
 
-		return products;
+		return new PagedResultDto<ProductDto>
+		{
+			Items = items,
+			TotalCount = totalCount
+		};
 	}
-
 	public async Task<ProductDto?> GetByIdAsync(int id)
 	{
 		var product = await _context.Products
-			.Include(product => product.Category)
 			.Where(product => product.Id == id)
 			.Select(product => new ProductDto
 			{
@@ -48,11 +79,21 @@ public class ProductService : IProductService
 				Name = product.Name,
 				Description = product.Description,
 				Price = product.Price,
-				StockQuantity = product.StockQuantity,
+				TotalStockQuantity = product.Variants.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-				TargetAudience = product.TargetAudience,
-				CategoryId = product.CategoryId,
-				CategoryName = product.Category.Name,
+
+				Category = new LookupDto
+				{
+					Id = product.CategoryId,
+					Name = product.Category.Name
+				},
+
+				TargetAudience = new LookupDto
+				{
+					Id = (int)product.TargetAudience,
+					Name = product.TargetAudience.ToString()
+				},
+
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
@@ -76,7 +117,6 @@ public class ProductService : IProductService
 			Name = dto.Name,
 			Description = dto.Description,
 			Price = dto.Price,
-			StockQuantity = dto.StockQuantity,
 			IsActive = dto.IsActive,
 			TargetAudience = dto.TargetAudience,
 			CategoryId = dto.CategoryId
@@ -110,7 +150,6 @@ public class ProductService : IProductService
 		product.Name = dto.Name;
 		product.Description = dto.Description;
 		product.Price = dto.Price;
-		product.StockQuantity = dto.StockQuantity;
 		product.IsActive = dto.IsActive;
 		product.TargetAudience = dto.TargetAudience;
 		product.CategoryId = dto.CategoryId;
@@ -160,28 +199,100 @@ public class ProductService : IProductService
 		return true;
 	}
 
-	public async Task<List<ProductDto>> GetDeletedAsync()
+	public async Task<PagedResultDto<ProductDto>> GetDeletedAsync(PagedRequestDto input)
 	{
-		var products = await _context.Products
+		var query = _context.Products
 			.IgnoreQueryFilters()
-			.Include(product => product.Category)
-			.Where(product => product.IsDeleted)
+			.Where(product => product.IsDeleted);
+
+		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+		{
+			var searchTerm = input.SearchTerm.Trim();
+
+			query = query.Where(product =>
+				product.Name.Contains(searchTerm) ||
+				(product.Description != null && product.Description.Contains(searchTerm)) ||
+				product.Category.Name.Contains(searchTerm));
+		}
+
+		query = ApplySorting(query, input.Sorting);
+
+		var totalCount = await query.CountAsync();
+
+		var pagedQuery = ApplyPaging(query, input);
+
+		var items = await pagedQuery
 			.Select(product => new ProductDto
 			{
 				Id = product.Id,
 				Name = product.Name,
 				Description = product.Description,
 				Price = product.Price,
-				StockQuantity = product.StockQuantity,
+				TotalStockQuantity = product.Variants
+					.Where(variant => !variant.IsDeleted)
+					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-				TargetAudience = product.TargetAudience,
-				CategoryId = product.CategoryId,
-				CategoryName = product.Category.Name,
+
+				Category = new LookupDto
+				{
+					Id = product.CategoryId,
+					Name = product.Category.Name
+				},
+
+				TargetAudience = new LookupDto
+				{
+					Id = (int)product.TargetAudience,
+					Name = product.TargetAudience.ToString()
+				},
+
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
 			.ToListAsync();
 
-		return products;
+		return new PagedResultDto<ProductDto>
+		{
+			Items = items,
+			TotalCount = totalCount
+		};
+	}
+ 
+
+
+	private static IQueryable<Product> ApplyPaging(IQueryable<Product> query, PagedRequestDto input)
+	{
+		if (input.SkipCount.HasValue && input.SkipCount.Value > 0)
+		{
+			query = query.Skip(input.SkipCount.Value);
+		}
+
+		if (input.MaxResultCount.HasValue)
+		{
+			query = query.Take(input.MaxResultCount.Value);
+		}
+
+		return query;
+	}
+
+	private static IQueryable<Product> ApplySorting(IQueryable<Product> query, string? sorting)
+	{
+		if (string.IsNullOrWhiteSpace(sorting))
+		{
+			return query.OrderBy(product => product.CreatedAt);
+		}
+
+		return sorting.Trim().ToLower() switch
+		{
+			"name" or "name asc" => query.OrderBy(product => product.Name),
+			"name desc" => query.OrderByDescending(product => product.Name),
+
+			"price" or "price asc" => query.OrderBy(product => product.Price),
+			"price desc" => query.OrderByDescending(product => product.Price),
+
+			"createdat" or "createdat asc" => query.OrderBy(product => product.CreatedAt),
+			"createdat desc" => query.OrderByDescending(product => product.CreatedAt),
+
+			_ => query.OrderBy(product => product.CreatedAt)
+		};
 	}
 }

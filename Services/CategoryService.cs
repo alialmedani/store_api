@@ -14,9 +14,26 @@ public class CategoryService : ICategoryService
 		_context = context;
 	}
 
-	public async Task<List<CategoryDto>> GetAllAsync()
+	public async Task<PagedResultDto<CategoryDto>> GetAllAsync(PagedRequestDto input)
 	{
-		var categories = await _context.Categories
+		var query = _context.Categories.AsQueryable();
+
+		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+		{
+			var searchTerm = input.SearchTerm.Trim();
+
+			query = query.Where(category =>
+				category.Name.Contains(searchTerm) ||
+				(category.Description != null && category.Description.Contains(searchTerm)));
+		}
+
+		query = ApplySorting(query, input.Sorting);
+
+		var totalCount = await query.CountAsync();
+
+		var pagedQuery = ApplyPaging(query, input);
+
+		var items = await pagedQuery
 			.Select(category => new CategoryDto
 			{
 				Id = category.Id,
@@ -28,7 +45,11 @@ public class CategoryService : ICategoryService
 			})
 			.ToListAsync();
 
-		return categories;
+		return new PagedResultDto<CategoryDto>
+		{
+			Items = items,
+			TotalCount = totalCount
+		};
 	}
 
 	public async Task<CategoryDto?> GetByIdAsync(int id)
@@ -124,11 +145,28 @@ public class CategoryService : ICategoryService
 		return true;
 	}
 
-	public async Task<List<CategoryDto>> GetDeletedAsync()
+	public async Task<PagedResultDto<CategoryDto>> GetDeletedAsync(PagedRequestDto input)
 	{
-		var categories = await _context.Categories
+		var query = _context.Categories
 			.IgnoreQueryFilters()
-			.Where(category => category.IsDeleted)
+			.Where(category => category.IsDeleted);
+
+		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+		{
+			var searchTerm = input.SearchTerm.Trim();
+
+			query = query.Where(category =>
+				category.Name.Contains(searchTerm) ||
+				(category.Description != null && category.Description.Contains(searchTerm)));
+		}
+
+		query = ApplySorting(query, input.Sorting);
+
+		var totalCount = await query.CountAsync();
+
+		var pagedQuery = ApplyPaging(query, input);
+
+		var items = await pagedQuery
 			.Select(category => new CategoryDto
 			{
 				Id = category.Id,
@@ -140,7 +178,11 @@ public class CategoryService : ICategoryService
 			})
 			.ToListAsync();
 
-		return categories;
+		return new PagedResultDto<CategoryDto>
+		{
+			Items = items,
+			TotalCount = totalCount
+		};
 	}
 
 	private static CategoryDto MapToDto(Category category)
@@ -153,6 +195,43 @@ public class CategoryService : ICategoryService
 			IsActive = category.IsActive,
 			CreatedAt = category.CreatedAt,
 			UpdatedAt = category.UpdatedAt
+		};
+	}
+
+	private static IQueryable<Category> ApplyPaging(IQueryable<Category> query, PagedRequestDto input)
+	{
+		if (input.SkipCount.HasValue && input.SkipCount.Value > 0)
+		{
+			query = query.Skip(input.SkipCount.Value);
+		}
+
+		if (input.MaxResultCount.HasValue)
+		{
+			query = query.Take(input.MaxResultCount.Value);
+		}
+
+		return query;
+	}
+
+	private static IQueryable<Category> ApplySorting(IQueryable<Category> query, string? sorting)
+	{
+		if (string.IsNullOrWhiteSpace(sorting))
+		{
+			return query.OrderBy(category => category.CreatedAt);
+		}
+
+		return sorting.Trim().ToLower() switch
+		{
+			"name" or "name asc" => query.OrderBy(category => category.Name),
+			"name desc" => query.OrderByDescending(category => category.Name),
+
+			"createdat" or "createdat asc" => query.OrderBy(category => category.CreatedAt),
+			"createdat desc" => query.OrderByDescending(category => category.CreatedAt),
+
+			"isactive" or "isactive asc" => query.OrderBy(category => category.IsActive),
+			"isactive desc" => query.OrderByDescending(category => category.IsActive),
+
+			_ => query.OrderBy(category => category.CreatedAt)
 		};
 	}
 }

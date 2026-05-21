@@ -1,6 +1,4 @@
-﻿using Store.Models;
-
-namespace Store.Dtos;
+﻿namespace Store.Dtos;
 
 public class ProductDto
 {
@@ -12,15 +10,13 @@ public class ProductDto
 
 	public decimal Price { get; set; }
 
-	public int StockQuantity { get; set; }
+	public int TotalStockQuantity { get; set; }
 
 	public bool IsActive { get; set; }
 
-	public ProductTargetAudience TargetAudience { get; set; }
+	public LookupDto Category { get; set; } = new();
 
-	public int CategoryId { get; set; }
-
-	public string CategoryName { get; set; } = string.Empty;
+	public LookupDto TargetAudience { get; set; } = new();
 
 	public DateTime CreatedAt { get; set; }
 

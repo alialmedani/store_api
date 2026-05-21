@@ -15,9 +15,6 @@ public class UpdateProductDto
 	[Range(0.01, double.MaxValue)]
 	public decimal Price { get; set; }
 
-	[Range(0, int.MaxValue)]
-	public int StockQuantity { get; set; }
-
 	public bool IsActive { get; set; }
 
 	public ProductTargetAudience TargetAudience { get; set; }

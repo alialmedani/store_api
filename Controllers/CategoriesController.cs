@@ -16,17 +16,17 @@ public class CategoriesController : ControllerBase
 	}
 
 	[HttpGet]
-	public async Task<ActionResult<List<CategoryDto>>> GetAll()
+	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetAll([FromQuery] PagedRequestDto input)
 	{
-		var categories = await _categoryService.GetAllAsync();
+		var categories = await _categoryService.GetAllAsync(input);
 
 		return Ok(categories);
 	}
 
 	[HttpGet("deleted")]
-	public async Task<ActionResult<List<CategoryDto>>> GetDeleted()
+	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetDeleted([FromQuery] PagedRequestDto input)
 	{
-		var categories = await _categoryService.GetDeletedAsync();
+		var categories = await _categoryService.GetDeletedAsync(input);
 
 		return Ok(categories);
 	}

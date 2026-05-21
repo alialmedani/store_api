@@ -15,9 +15,6 @@ public class CreateProductDto
 	[Range(0.01, double.MaxValue)]
 	public decimal Price { get; set; }
 
-	[Range(0, int.MaxValue)]
-	public int StockQuantity { get; set; }
-
 	public bool IsActive { get; set; } = true;
 
 	public ProductTargetAudience TargetAudience { get; set; } = ProductTargetAudience.Unisex;

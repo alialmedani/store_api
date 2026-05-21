@@ -13,9 +13,21 @@ public class AppDbContext : DbContext
 	public DbSet<Category> Categories => Set<Category>();
 
 	public DbSet<Product> Products => Set<Product>();
-
+	public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
+		modelBuilder.Entity<ProductVariant>()
+	.HasQueryFilter(variant => !variant.IsDeleted);
+
+		modelBuilder.Entity<ProductVariant>()
+			.HasOne(variant => variant.Product)
+			.WithMany(product => product.Variants)
+			.HasForeignKey(variant => variant.ProductId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		modelBuilder.Entity<ProductVariant>()
+			.HasIndex(variant => new { variant.ProductId, variant.Color, variant.Size })
+			.IsUnique();
 		base.OnModelCreating(modelBuilder);
 
 		modelBuilder.Entity<Category>()
@@ -37,4 +49,5 @@ public class AppDbContext : DbContext
 			.HasForeignKey(product => product.CategoryId)
 			.OnDelete(DeleteBehavior.Restrict);
 	}
+
 }

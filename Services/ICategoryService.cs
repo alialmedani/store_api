@@ -4,7 +4,7 @@ namespace Store.Services;
 
 public interface ICategoryService
 {
-	Task<List<CategoryDto>> GetAllAsync();
+	Task<PagedResultDto<CategoryDto>> GetAllAsync(PagedRequestDto input);
 
 	Task<CategoryDto?> GetByIdAsync(int id);
 
@@ -15,5 +15,6 @@ public interface ICategoryService
 	Task<bool> DeleteAsync(int id);
 
 	Task<bool> RestoreAsync(int id);
-	Task<List<CategoryDto>> GetDeletedAsync();
+
+	Task<PagedResultDto<CategoryDto>> GetDeletedAsync(PagedRequestDto input);
 }
