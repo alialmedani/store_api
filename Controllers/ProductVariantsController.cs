@@ -24,7 +24,18 @@ public class ProductVariantsController : ControllerBase
 
 		return Ok(variants);
 	}
+	[HttpPost("{id:int}/adjust-stock")]
+	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, AdjustProductVariantStockDto dto)
+	{
+		var variant = await _productVariantService.AdjustStockAsync(id, dto);
 
+		if (variant == null)
+		{
+			return BadRequest("Variant does not exist or stock quantity cannot be negative.");
+		}
+
+		return Ok(variant);
+	}
 	[HttpGet("deleted")]
 	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetDeleted([FromQuery] PagedRequestDto input)
 	{
@@ -57,6 +68,19 @@ public class ProductVariantsController : ControllerBase
 		}
 
 		return Ok(variant);
+	}
+
+	[HttpPost("bulk")]
+	public async Task<ActionResult<List<ProductVariantDto>>> BulkCreate(CreateBulkProductVariantsDto dto)
+	{
+		var variants = await _productVariantService.BulkCreateAsync(dto);
+
+		if (variants == null)
+		{
+			return BadRequest("Product does not exist, duplicate variant exists, or request contains duplicates.");
+		}
+
+		return Ok(variants);
 	}
 
 	[HttpPut("{id:int}")]

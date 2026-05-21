@@ -6,8 +6,7 @@ public interface IProductService
 {
 	Task<PagedResultDto<ProductDto>> GetAllAsync(PagedRequestDto input);
 
-	Task<ProductDto?> GetByIdAsync(int id);
-
+	Task<ProductDetailsDto?> GetByIdAsync(int id);
 	Task<ProductDto?> CreateAsync(CreateProductDto dto);
 
 	Task<ProductDto?> UpdateAsync(int id, UpdateProductDto dto);

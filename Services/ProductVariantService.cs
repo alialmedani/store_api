@@ -13,7 +13,30 @@ public class ProductVariantService : IProductVariantService
 	{
 		_context = context;
 	}
+	public async Task<ProductVariantDto?> AdjustStockAsync(int id, AdjustProductVariantStockDto dto)
+	{
+		var variant = await _context.ProductVariants
+			.FirstOrDefaultAsync(variant => variant.Id == id);
 
+		if (variant == null)
+		{
+			return null;
+		}
+
+		var newStockQuantity = variant.StockQuantity + dto.QuantityChange;
+
+		if (newStockQuantity < 0)
+		{
+			return null;
+		}
+
+		variant.StockQuantity = newStockQuantity;
+		variant.UpdatedAt = DateTime.UtcNow;
+
+		await _context.SaveChangesAsync();
+
+		return await GetByIdAsync(variant.Id);
+	}
 	public async Task<PagedResultDto<ProductVariantDto>> GetByProductIdAsync(int productId, PagedRequestDto input)
 	{
 		var query = _context.ProductVariants
@@ -112,7 +135,87 @@ public class ProductVariantService : IProductVariantService
 
 		return await GetByIdAsync(variant.Id);
 	}
+	public async Task<List<ProductVariantDto>?> BulkCreateAsync(CreateBulkProductVariantsDto dto)
+	{
+		var productExists = await _context.Products
+			.AnyAsync(product => product.Id == dto.ProductId);
 
+		if (!productExists)
+		{
+			return null;
+		}
+
+		var normalizedItems = dto.Variants
+			.Select(variant => new
+			{
+				Color = variant.Color.Trim(),
+				Size = variant.Size.Trim(),
+				variant.StockQuantity
+			})
+			.ToList();
+
+		var hasDuplicateInRequest = normalizedItems
+			.GroupBy(variant => new { variant.Color, variant.Size })
+			.Any(group => group.Count() > 1);
+
+		if (hasDuplicateInRequest)
+		{
+			return null;
+		}
+
+		var existingVariants = await _context.ProductVariants
+			.IgnoreQueryFilters()
+			.Where(variant => variant.ProductId == dto.ProductId)
+			.Select(variant => new
+			{
+				variant.Color,
+				variant.Size
+			})
+			.ToListAsync();
+
+		var hasExistingDuplicate = normalizedItems.Any(item =>
+			existingVariants.Any(existing =>
+				existing.Color == item.Color &&
+				existing.Size == item.Size));
+
+		if (hasExistingDuplicate)
+		{
+			return null;
+		}
+
+		var variants = normalizedItems
+			.Select(item => new ProductVariant
+			{
+				ProductId = dto.ProductId,
+				Color = item.Color,
+				Size = item.Size,
+				StockQuantity = item.StockQuantity
+			})
+			.ToList();
+
+		_context.ProductVariants.AddRange(variants);
+
+		await _context.SaveChangesAsync();
+
+		var createdIds = variants.Select(variant => variant.Id).ToList();
+
+		var result = await _context.ProductVariants
+			.Where(variant => createdIds.Contains(variant.Id))
+			.Select(variant => new ProductVariantDto
+			{
+				Id = variant.Id,
+				ProductId = variant.ProductId,
+				ProductName = variant.Product.Name,
+				Color = variant.Color,
+				Size = variant.Size,
+				StockQuantity = variant.StockQuantity,
+				CreatedAt = variant.CreatedAt,
+				UpdatedAt = variant.UpdatedAt
+			})
+			.ToListAsync();
+
+		return result;
+	}
 	public async Task<ProductVariantDto?> UpdateAsync(int id, UpdateProductVariantDto dto)
 	{
 		var variant = await _context.ProductVariants

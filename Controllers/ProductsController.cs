@@ -32,7 +32,7 @@ public class ProductsController : ControllerBase
 	}
 
 	[HttpGet("{id:int}")]
-	public async Task<ActionResult<ProductDto>> GetById(int id)
+	public async Task<ActionResult<ProductDetailsDto>> GetById(int id)
 	{
 		var product = await _productService.GetByIdAsync(id);
 

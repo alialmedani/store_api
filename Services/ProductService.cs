@@ -69,17 +69,19 @@ public class ProductService : IProductService
 			TotalCount = totalCount
 		};
 	}
-	public async Task<ProductDto?> GetByIdAsync(int id)
+	public async Task<ProductDetailsDto?> GetByIdAsync(int id)
 	{
 		var product = await _context.Products
 			.Where(product => product.Id == id)
-			.Select(product => new ProductDto
+			.Select(product => new ProductDetailsDto
 			{
 				Id = product.Id,
 				Name = product.Name,
 				Description = product.Description,
 				Price = product.Price,
-				TotalStockQuantity = product.Variants.Sum(variant => variant.StockQuantity),
+				TotalStockQuantity = product.Variants
+					.Where(variant => !variant.IsDeleted)
+					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
 
 				Category = new LookupDto
@@ -95,13 +97,23 @@ public class ProductService : IProductService
 				},
 
 				CreatedAt = product.CreatedAt,
-				UpdatedAt = product.UpdatedAt
+				UpdatedAt = product.UpdatedAt,
+
+				Variants = product.Variants
+					.Where(variant => !variant.IsDeleted)
+					.Select(variant => new ProductVariantSummaryDto
+					{
+						Id = variant.Id,
+						Color = variant.Color,
+						Size = variant.Size,
+						StockQuantity = variant.StockQuantity
+					})
+					.ToList()
 			})
 			.FirstOrDefaultAsync();
 
 		return product;
 	}
-
 	public async Task<ProductDto?> CreateAsync(CreateProductDto dto)
 	{
 		var categoryExists = await _context.Categories
