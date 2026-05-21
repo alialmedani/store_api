@@ -8,9 +8,8 @@ public class CreateBulkProductVariantItemDto
 	[MaxLength(50)]
 	public string Color { get; set; } = string.Empty;
 
-	[Required]
 	[MaxLength(20)]
-	public string Size { get; set; } = string.Empty;
+	public string? Size { get; set; }
 
 	[Range(0, int.MaxValue)]
 	public int StockQuantity { get; set; }

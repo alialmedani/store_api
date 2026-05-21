@@ -15,6 +15,7 @@ public class ProductVariantsController : ControllerBase
 		_productVariantService = productVariantService;
 	}
 
+	// GET: /api/ProductVariants/by-product/{productId}
 	[HttpGet("by-product/{productId:int}")]
 	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetByProductId(
 		int productId,
@@ -24,26 +25,8 @@ public class ProductVariantsController : ControllerBase
 
 		return Ok(variants);
 	}
-	[HttpPost("{id:int}/adjust-stock")]
-	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, AdjustProductVariantStockDto dto)
-	{
-		var variant = await _productVariantService.AdjustStockAsync(id, dto);
 
-		if (variant == null)
-		{
-			return BadRequest("Variant does not exist or stock quantity cannot be negative.");
-		}
-
-		return Ok(variant);
-	}
-	[HttpGet("deleted")]
-	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetDeleted([FromQuery] PagedRequestDto input)
-	{
-		var variants = await _productVariantService.GetDeletedAsync(input);
-
-		return Ok(variants);
-	}
-
+	// GET: /api/ProductVariants/{id}
 	[HttpGet("{id:int}")]
 	public async Task<ActionResult<ProductVariantDto>> GetById(int id)
 	{
@@ -57,6 +40,7 @@ public class ProductVariantsController : ControllerBase
 		return Ok(variant);
 	}
 
+	// POST: /api/ProductVariants
 	[HttpPost]
 	public async Task<ActionResult<ProductVariantDto>> Create(CreateProductVariantDto dto)
 	{
@@ -64,12 +48,13 @@ public class ProductVariantsController : ControllerBase
 
 		if (variant == null)
 		{
-			return BadRequest("Product does not exist or variant already exists.");
+			return BadRequest("Product does not exist, variant already exists, or size is not valid for this product category.");
 		}
 
 		return Ok(variant);
 	}
 
+	// POST: /api/ProductVariants/bulk
 	[HttpPost("bulk")]
 	public async Task<ActionResult<List<ProductVariantDto>>> BulkCreate(CreateBulkProductVariantsDto dto)
 	{
@@ -77,12 +62,13 @@ public class ProductVariantsController : ControllerBase
 
 		if (variants == null)
 		{
-			return BadRequest("Product does not exist, duplicate variant exists, or request contains duplicates.");
+			return BadRequest("Product does not exist, duplicate variant exists, request contains duplicates, or one of the sizes is not valid for this product category.");
 		}
 
 		return Ok(variants);
 	}
 
+	// PUT: /api/ProductVariants/{id}
 	[HttpPut("{id:int}")]
 	public async Task<ActionResult<ProductVariantDto>> Update(int id, UpdateProductVariantDto dto)
 	{
@@ -90,12 +76,74 @@ public class ProductVariantsController : ControllerBase
 
 		if (variant == null)
 		{
-			return BadRequest("Variant does not exist or duplicate variant exists.");
+			return BadRequest("Variant does not exist, duplicate variant exists, or size is not valid for this product category.");
 		}
 
 		return Ok(variant);
 	}
 
+	// POST: /api/ProductVariants/{id}/adjust-stock
+	[HttpPost("{id:int}/adjust-stock")]
+	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, AdjustProductVariantStockDto dto)
+	{
+		var variant = await _productVariantService.AdjustStockAsync(id, dto);
+
+		if (variant == null)
+		{
+			return BadRequest("Variant does not exist, quantity change cannot be zero, or stock quantity cannot be negative.");
+		}
+
+		return Ok(variant);
+	}
+
+	// GET: /api/ProductVariants/{id}/stock-movements
+	[HttpGet("{id:int}/stock-movements")]
+	public async Task<ActionResult<PagedResultDto<StockMovementDto>>> GetStockMovements(
+		int id,
+		[FromQuery] PagedRequestDto input)
+	{
+		var movements = await _productVariantService.GetStockMovementsAsync(id, input);
+
+		return Ok(movements);
+	}
+
+	// GET: /api/ProductVariants/available-colors/{productId}
+	[HttpGet("available-colors/{productId:int}")]
+	public async Task<ActionResult<List<string>>> GetAvailableColors(int productId)
+	{
+		var colors = await _productVariantService.GetAvailableColorsAsync(productId);
+
+		return Ok(colors);
+	}
+
+	// GET: /api/ProductVariants/available-sizes/{productId}
+	[HttpGet("available-sizes/{productId:int}")]
+	public async Task<ActionResult<List<string>>> GetAvailableSizes(int productId)
+	{
+		var sizes = await _productVariantService.GetAvailableSizesAsync(productId);
+
+		return Ok(sizes);
+	}
+
+	// GET: /api/ProductVariants/available-colors-by-size/{productId}/{size}
+	[HttpGet("available-colors-by-size/{productId:int}/{size}")]
+	public async Task<ActionResult<List<string>>> GetAvailableColorsBySize(int productId, string size)
+	{
+		var colors = await _productVariantService.GetAvailableColorsBySizeAsync(productId, size);
+
+		return Ok(colors);
+	}
+
+	// GET: /api/ProductVariants/available-sizes-by-color/{productId}/{color}
+	[HttpGet("available-sizes-by-color/{productId:int}/{color}")]
+	public async Task<ActionResult<List<string>>> GetAvailableSizesByColor(int productId, string color)
+	{
+		var sizes = await _productVariantService.GetAvailableSizesByColorAsync(productId, color);
+
+		return Ok(sizes);
+	}
+
+	// DELETE: /api/ProductVariants/{id}
 	[HttpDelete("{id:int}")]
 	public async Task<ActionResult> Delete(int id)
 	{
@@ -108,15 +156,17 @@ public class ProductVariantsController : ControllerBase
 
 		return NoContent();
 	}
-	[HttpGet("{id:int}/stock-movements")]
-	public async Task<ActionResult<PagedResultDto<StockMovementDto>>> GetStockMovements(
-	int id,
-	[FromQuery] PagedRequestDto input)
-	{
-		var movements = await _productVariantService.GetStockMovementsAsync(id, input);
 
-		return Ok(movements);
+	// GET: /api/ProductVariants/deleted
+	[HttpGet("deleted")]
+	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetDeleted([FromQuery] PagedRequestDto input)
+	{
+		var variants = await _productVariantService.GetDeletedAsync(input);
+
+		return Ok(variants);
 	}
+
+	// POST: /api/ProductVariants/{id}/restore
 	[HttpPost("{id:int}/restore")]
 	public async Task<ActionResult> Restore(int id)
 	{
@@ -128,37 +178,5 @@ public class ProductVariantsController : ControllerBase
 		}
 
 		return NoContent();
-	}
-
-	[HttpGet("available-colors/{productId:int}")]
-	public async Task<ActionResult<List<string>>> GetAvailableColors(int productId)
-	{
-		var colors = await _productVariantService.GetAvailableColorsAsync(productId);
-
-		return Ok(colors);
-	}
-
-	[HttpGet("available-sizes/{productId:int}")]
-	public async Task<ActionResult<List<string>>> GetAvailableSizes(int productId)
-	{
-		var sizes = await _productVariantService.GetAvailableSizesAsync(productId);
-
-		return Ok(sizes);
-	}
-
-	[HttpGet("available-colors-by-size/{productId:int}/{size}")]
-	public async Task<ActionResult<List<string>>> GetAvailableColorsBySize(int productId, string size)
-	{
-		var colors = await _productVariantService.GetAvailableColorsBySizeAsync(productId, size);
-
-		return Ok(colors);
-	}
-
-	[HttpGet("available-sizes-by-color/{productId:int}/{color}")]
-	public async Task<ActionResult<List<string>>> GetAvailableSizesByColor(int productId, string color)
-	{
-		var sizes = await _productVariantService.GetAvailableSizesByColorAsync(productId, color);
-
-		return Ok(sizes);
 	}
 }

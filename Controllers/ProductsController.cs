@@ -15,6 +15,7 @@ public class ProductsController : ControllerBase
 		_productService = productService;
 	}
 
+	// GET: /api/Products
 	[HttpGet]
 	public async Task<ActionResult<PagedResultDto<ProductDto>>> GetAll([FromQuery] PagedRequestDto input)
 	{
@@ -23,14 +24,7 @@ public class ProductsController : ControllerBase
 		return Ok(products);
 	}
 
-	[HttpGet("deleted")]
-	public async Task<ActionResult<PagedResultDto<ProductDto>>> GetDeleted([FromQuery] PagedRequestDto input)
-	{
-		var products = await _productService.GetDeletedAsync(input);
-
-		return Ok(products);
-	}
-
+	// GET: /api/Products/{id}
 	[HttpGet("{id:int}")]
 	public async Task<ActionResult<ProductDetailsDto>> GetById(int id)
 	{
@@ -44,6 +38,7 @@ public class ProductsController : ControllerBase
 		return Ok(product);
 	}
 
+	// POST: /api/Products
 	[HttpPost]
 	public async Task<ActionResult<ProductDto>> Create(CreateProductDto dto)
 	{
@@ -57,6 +52,7 @@ public class ProductsController : ControllerBase
 		return Ok(product);
 	}
 
+	// PUT: /api/Products/{id}
 	[HttpPut("{id:int}")]
 	public async Task<ActionResult<ProductDto>> Update(int id, UpdateProductDto dto)
 	{
@@ -70,6 +66,7 @@ public class ProductsController : ControllerBase
 		return Ok(product);
 	}
 
+	// DELETE: /api/Products/{id}
 	[HttpDelete("{id:int}")]
 	public async Task<ActionResult> Delete(int id)
 	{
@@ -83,6 +80,16 @@ public class ProductsController : ControllerBase
 		return NoContent();
 	}
 
+	// GET: /api/Products/deleted
+	[HttpGet("deleted")]
+	public async Task<ActionResult<PagedResultDto<ProductDto>>> GetDeleted([FromQuery] PagedRequestDto input)
+	{
+		var products = await _productService.GetDeletedAsync(input);
+
+		return Ok(products);
+	}
+
+	// POST: /api/Products/{id}/restore
 	[HttpPost("{id:int}/restore")]
 	public async Task<ActionResult> Restore(int id)
 	{

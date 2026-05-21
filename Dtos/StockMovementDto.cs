@@ -1,5 +1,4 @@
-﻿ 
-namespace Store.Dtos;
+﻿namespace Store.Dtos;
 
 public class StockMovementDto
 {
@@ -14,6 +13,7 @@ public class StockMovementDto
 	public string Size { get; set; } = string.Empty;
 
 	public LookupDto MovementType { get; set; } = new();
+
 	public int QuantityChange { get; set; }
 
 	public int OldQuantity { get; set; }

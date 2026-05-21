@@ -19,6 +19,6 @@ public class CreateProductDto
 
 	public ProductTargetAudience TargetAudience { get; set; } = ProductTargetAudience.Unisex;
 
-	[Required]
+	[Range(1, int.MaxValue)]
 	public int CategoryId { get; set; }
 }

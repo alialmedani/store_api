@@ -10,9 +10,13 @@ public interface IProductVariantService
 
 	Task<ProductVariantDto?> CreateAsync(CreateProductVariantDto dto);
 
+	Task<List<ProductVariantDto>?> BulkCreateAsync(CreateBulkProductVariantsDto dto);
+
 	Task<ProductVariantDto?> UpdateAsync(int id, UpdateProductVariantDto dto);
-	Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input);
+
 	Task<ProductVariantDto?> AdjustStockAsync(int id, AdjustProductVariantStockDto dto);
+
+	Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input);
 
 	Task<bool> DeleteAsync(int id);
 
@@ -27,5 +31,4 @@ public interface IProductVariantService
 	Task<List<string>> GetAvailableColorsBySizeAsync(int productId, string size);
 
 	Task<List<string>> GetAvailableSizesByColorAsync(int productId, string color);
-	Task<List<ProductVariantDto>?> BulkCreateAsync(CreateBulkProductVariantsDto dto);
 }

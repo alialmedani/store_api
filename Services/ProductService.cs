@@ -69,6 +69,7 @@ public class ProductService : IProductService
 			TotalCount = totalCount
 		};
 	}
+
 	public async Task<ProductDetailsDto?> GetByIdAsync(int id)
 	{
 		var product = await _context.Products
@@ -98,20 +99,25 @@ public class ProductService : IProductService
 
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt,
+
 				AvailableColors = product.Variants
-	.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
-	.Select(variant => variant.Color)
-	.Distinct()
-	.ToList(),
+					.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
+					.Select(variant => variant.Color)
+					.Distinct()
+					.OrderBy(color => color)
+					.ToList(),
 
 				AvailableSizes = product.Variants
-	.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
-	.Select(variant => variant.Size)
-	.Distinct()
-	.ToList(),
+					.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
+					.Select(variant => variant.Size)
+					.Distinct()
+					.OrderBy(size => size)
+					.ToList(),
 
 				Variants = product.Variants
 					.Where(variant => !variant.IsDeleted)
+					.OrderBy(variant => variant.Color)
+					.ThenBy(variant => variant.Size)
 					.Select(variant => new ProductVariantSummaryDto
 					{
 						Id = variant.Id,
@@ -125,6 +131,7 @@ public class ProductService : IProductService
 
 		return product;
 	}
+
 	public async Task<ProductDto?> CreateAsync(CreateProductDto dto)
 	{
 		var categoryExists = await _context.Categories
@@ -137,7 +144,7 @@ public class ProductService : IProductService
 
 		var product = new Product
 		{
-			Name = dto.Name,
+			Name = dto.Name.Trim(),
 			Description = dto.Description,
 			Price = dto.Price,
 			IsActive = dto.IsActive,
@@ -149,7 +156,7 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return await GetByIdAsync(product.Id);
+		return await GetDtoByIdAsync(product.Id);
 	}
 
 	public async Task<ProductDto?> UpdateAsync(int id, UpdateProductDto dto)
@@ -170,7 +177,7 @@ public class ProductService : IProductService
 			return null;
 		}
 
-		product.Name = dto.Name;
+		product.Name = dto.Name.Trim();
 		product.Description = dto.Description;
 		product.Price = dto.Price;
 		product.IsActive = dto.IsActive;
@@ -180,7 +187,7 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return await GetByIdAsync(product.Id);
+		return await GetDtoByIdAsync(product.Id);
 	}
 
 	public async Task<bool> DeleteAsync(int id)
@@ -279,8 +286,41 @@ public class ProductService : IProductService
 			TotalCount = totalCount
 		};
 	}
- 
 
+	private async Task<ProductDto?> GetDtoByIdAsync(int id)
+	{
+		var product = await _context.Products
+			.Where(product => product.Id == id)
+			.Select(product => new ProductDto
+			{
+				Id = product.Id,
+				Name = product.Name,
+				Description = product.Description,
+				Price = product.Price,
+				TotalStockQuantity = product.Variants
+					.Where(variant => !variant.IsDeleted)
+					.Sum(variant => variant.StockQuantity),
+				IsActive = product.IsActive,
+
+				Category = new LookupDto
+				{
+					Id = product.CategoryId,
+					Name = product.Category.Name
+				},
+
+				TargetAudience = new LookupDto
+				{
+					Id = (int)product.TargetAudience,
+					Name = product.TargetAudience.ToString()
+				},
+
+				CreatedAt = product.CreatedAt,
+				UpdatedAt = product.UpdatedAt
+			})
+			.FirstOrDefaultAsync();
+
+		return product;
+	}
 
 	private static IQueryable<Product> ApplyPaging(IQueryable<Product> query, PagedRequestDto input)
 	{
