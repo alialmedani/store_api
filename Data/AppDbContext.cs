@@ -11,14 +11,21 @@ public class AppDbContext : DbContext
 	}
 
 	public DbSet<Category> Categories => Set<Category>();
-
+	public DbSet<StockMovement> StockMovements => Set<StockMovement>();
 	public DbSet<Product> Products => Set<Product>();
 	public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.Entity<ProductVariant>()
 	.HasQueryFilter(variant => !variant.IsDeleted);
+		modelBuilder.Entity<StockMovement>()
+		.HasQueryFilter(movement => !movement.IsDeleted);
 
+		modelBuilder.Entity<StockMovement>()
+			.HasOne(movement => movement.ProductVariant)
+			.WithMany(variant => variant.StockMovements)
+			.HasForeignKey(movement => movement.ProductVariantId)
+			.OnDelete(DeleteBehavior.Cascade);
 		modelBuilder.Entity<ProductVariant>()
 			.HasOne(variant => variant.Product)
 			.WithMany(product => product.Variants)

@@ -7,7 +7,7 @@ public class ProductVariant : BaseEntity
 	public int ProductId { get; set; }
 
 	public Product Product { get; set; } = null!;
-
+	public ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 	[Required]
 	[MaxLength(50)]
 	public string Color { get; set; } = string.Empty;

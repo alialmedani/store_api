@@ -15,6 +15,7 @@ public class CategoriesController : ControllerBase
 		_categoryService = categoryService;
 	}
 
+	// GET: /api/Categories
 	[HttpGet]
 	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetAll([FromQuery] PagedRequestDto input)
 	{
@@ -23,14 +24,7 @@ public class CategoriesController : ControllerBase
 		return Ok(categories);
 	}
 
-	[HttpGet("deleted")]
-	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetDeleted([FromQuery] PagedRequestDto input)
-	{
-		var categories = await _categoryService.GetDeletedAsync(input);
-
-		return Ok(categories);
-	}
-
+	// GET: /api/Categories/{id}
 	[HttpGet("{id:int}")]
 	public async Task<ActionResult<CategoryDto>> GetById(int id)
 	{
@@ -44,6 +38,7 @@ public class CategoriesController : ControllerBase
 		return Ok(category);
 	}
 
+	// POST: /api/Categories
 	[HttpPost]
 	public async Task<ActionResult<CategoryDto>> Create(CreateCategoryDto dto)
 	{
@@ -52,6 +47,7 @@ public class CategoriesController : ControllerBase
 		return Ok(category);
 	}
 
+	// PUT: /api/Categories/{id}
 	[HttpPut("{id:int}")]
 	public async Task<ActionResult<CategoryDto>> Update(int id, UpdateCategoryDto dto)
 	{
@@ -65,6 +61,7 @@ public class CategoriesController : ControllerBase
 		return Ok(category);
 	}
 
+	// DELETE: /api/Categories/{id}
 	[HttpDelete("{id:int}")]
 	public async Task<ActionResult> Delete(int id)
 	{
@@ -78,6 +75,16 @@ public class CategoriesController : ControllerBase
 		return NoContent();
 	}
 
+	// GET: /api/Categories/deleted
+	[HttpGet("deleted")]
+	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetDeleted([FromQuery] PagedRequestDto input)
+	{
+		var categories = await _categoryService.GetDeletedAsync(input);
+
+		return Ok(categories);
+	}
+
+	// POST: /api/Categories/{id}/restore
 	[HttpPost("{id:int}/restore")]
 	public async Task<ActionResult> Restore(int id)
 	{

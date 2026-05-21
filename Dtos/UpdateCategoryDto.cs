@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
-
+using Store.Models;
 namespace Store.Dtos;
 
 public class UpdateCategoryDto
@@ -10,6 +10,6 @@ public class UpdateCategoryDto
 
 	[MaxLength(500)]
 	public string? Description { get; set; }
-
+	public CategorySizeType SizeType { get; set; }
 	public bool IsActive { get; set; }
 }

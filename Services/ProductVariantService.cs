@@ -22,21 +22,45 @@ public class ProductVariantService : IProductVariantService
 		{
 			return null;
 		}
+		if (dto.QuantityChange == 0)
+		{
+			return null;
+		}
 
-		var newStockQuantity = variant.StockQuantity + dto.QuantityChange;
+		var oldQuantity = variant.StockQuantity;
+		var newStockQuantity = oldQuantity + dto.QuantityChange;
 
 		if (newStockQuantity < 0)
 		{
 			return null;
 		}
 
+		var movementType = dto.QuantityChange > 0
+			? StockMovementType.Increase
+			: dto.QuantityChange < 0
+				? StockMovementType.Decrease
+				: StockMovementType.Adjustment;
+
+		var movement = new StockMovement
+		{
+			ProductVariantId = variant.Id,
+			MovementType = movementType,
+			QuantityChange = dto.QuantityChange,
+			OldQuantity = oldQuantity,
+			NewQuantity = newStockQuantity,
+			Note = dto.Note
+		};
+
 		variant.StockQuantity = newStockQuantity;
 		variant.UpdatedAt = DateTime.UtcNow;
+
+		_context.StockMovements.Add(movement);
 
 		await _context.SaveChangesAsync();
 
 		return await GetByIdAsync(variant.Id);
 	}
+
 	public async Task<PagedResultDto<ProductVariantDto>> GetByProductIdAsync(int productId, PagedRequestDto input)
 	{
 		var query = _context.ProductVariants
@@ -98,7 +122,55 @@ public class ProductVariantService : IProductVariantService
 
 		return variant;
 	}
+	public async Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input)
+	{
+		var query = _context.StockMovements
+			.Where(movement => movement.ProductVariantId == variantId);
 
+		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+		{
+			var searchTerm = input.SearchTerm.Trim();
+
+			query = query.Where(movement =>
+				(movement.Note != null && movement.Note.Contains(searchTerm)) ||
+				movement.ProductVariant.Color.Contains(searchTerm) ||
+				movement.ProductVariant.Size.Contains(searchTerm) ||
+				movement.ProductVariant.Product.Name.Contains(searchTerm));
+		}
+
+		query = ApplyStockMovementSorting(query, input.Sorting);
+
+		var totalCount = await query.CountAsync();
+
+		var pagedQuery = ApplyStockMovementPaging(query, input);
+
+		var items = await pagedQuery
+			.Select(movement => new StockMovementDto
+			{
+				Id = movement.Id,
+				ProductVariantId = movement.ProductVariantId,
+				ProductName = movement.ProductVariant.Product.Name,
+				Color = movement.ProductVariant.Color,
+				Size = movement.ProductVariant.Size,
+				MovementType = new LookupDto
+				{
+					Id = (int)movement.MovementType,
+					Name = movement.MovementType.ToString()
+				},
+				QuantityChange = movement.QuantityChange,
+				OldQuantity = movement.OldQuantity,
+				NewQuantity = movement.NewQuantity,
+				Note = movement.Note,
+				CreatedAt = movement.CreatedAt
+			})
+			.ToListAsync();
+
+		return new PagedResultDto<StockMovementDto>
+		{
+			Items = items,
+			TotalCount = totalCount
+		};
+	}
 	public async Task<ProductVariantDto?> CreateAsync(CreateProductVariantDto dto)
 	{
 		var productExists = await _context.Products
@@ -422,6 +494,47 @@ public class ProductVariantService : IProductVariantService
 			"createdat desc" => query.OrderByDescending(variant => variant.CreatedAt),
 
 			_ => query.OrderBy(variant => variant.CreatedAt)
+		};
+	}
+
+
+	private static IQueryable<StockMovement> ApplyStockMovementPaging(IQueryable<StockMovement> query, PagedRequestDto input)
+	{
+		if (input.SkipCount.HasValue && input.SkipCount.Value > 0)
+		{
+			query = query.Skip(input.SkipCount.Value);
+		}
+
+		if (input.MaxResultCount.HasValue)
+		{
+			query = query.Take(input.MaxResultCount.Value);
+		}
+
+		return query;
+	}
+
+	private static IQueryable<StockMovement> ApplyStockMovementSorting(IQueryable<StockMovement> query, string? sorting)
+	{
+		if (string.IsNullOrWhiteSpace(sorting))
+		{
+			return query.OrderBy(movement => movement.CreatedAt);
+		}
+
+		return sorting.Trim().ToLower() switch
+		{
+			"createdat" or "createdat asc" => query.OrderBy(movement => movement.CreatedAt),
+			"createdat desc" => query.OrderByDescending(movement => movement.CreatedAt),
+
+			"quantitychange" or "quantitychange asc" => query.OrderBy(movement => movement.QuantityChange),
+			"quantitychange desc" => query.OrderByDescending(movement => movement.QuantityChange),
+
+			"oldquantity" or "oldquantity asc" => query.OrderBy(movement => movement.OldQuantity),
+			"oldquantity desc" => query.OrderByDescending(movement => movement.OldQuantity),
+
+			"newquantity" or "newquantity asc" => query.OrderBy(movement => movement.NewQuantity),
+			"newquantity desc" => query.OrderByDescending(movement => movement.NewQuantity),
+
+			_ => query.OrderBy(movement => movement.CreatedAt)
 		};
 	}
 }

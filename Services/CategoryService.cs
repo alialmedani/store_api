@@ -40,6 +40,13 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
+
+				SizeType = new LookupDto
+				{
+					Id = (int)category.SizeType,
+					Name = category.SizeType.ToString()
+				},
+
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -62,6 +69,13 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
+
+				SizeType = new LookupDto
+				{
+					Id = (int)category.SizeType,
+					Name = category.SizeType.ToString()
+				},
+
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -76,7 +90,8 @@ public class CategoryService : ICategoryService
 		{
 			Name = dto.Name,
 			Description = dto.Description,
-			IsActive = dto.IsActive
+			IsActive = dto.IsActive,
+			SizeType = dto.SizeType
 		};
 
 		_context.Categories.Add(category);
@@ -99,6 +114,7 @@ public class CategoryService : ICategoryService
 		category.Name = dto.Name;
 		category.Description = dto.Description;
 		category.IsActive = dto.IsActive;
+		category.SizeType = dto.SizeType;
 		category.UpdatedAt = DateTime.UtcNow;
 
 		await _context.SaveChangesAsync();
@@ -173,6 +189,13 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
+
+				SizeType = new LookupDto
+				{
+					Id = (int)category.SizeType,
+					Name = category.SizeType.ToString()
+				},
+
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -193,6 +216,13 @@ public class CategoryService : ICategoryService
 			Name = category.Name,
 			Description = category.Description,
 			IsActive = category.IsActive,
+
+			SizeType = new LookupDto
+			{
+				Id = (int)category.SizeType,
+				Name = category.SizeType.ToString()
+			},
+
 			CreatedAt = category.CreatedAt,
 			UpdatedAt = category.UpdatedAt
 		};
@@ -230,6 +260,9 @@ public class CategoryService : ICategoryService
 
 			"isactive" or "isactive asc" => query.OrderBy(category => category.IsActive),
 			"isactive desc" => query.OrderByDescending(category => category.IsActive),
+
+			"sizetype" or "sizetype asc" => query.OrderBy(category => category.SizeType),
+			"sizetype desc" => query.OrderByDescending(category => category.SizeType),
 
 			_ => query.OrderBy(category => category.CreatedAt)
 		};

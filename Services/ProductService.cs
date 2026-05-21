@@ -98,6 +98,17 @@ public class ProductService : IProductService
 
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt,
+				AvailableColors = product.Variants
+	.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
+	.Select(variant => variant.Color)
+	.Distinct()
+	.ToList(),
+
+				AvailableSizes = product.Variants
+	.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
+	.Select(variant => variant.Size)
+	.Distinct()
+	.ToList(),
 
 				Variants = product.Variants
 					.Where(variant => !variant.IsDeleted)

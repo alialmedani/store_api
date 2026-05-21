@@ -108,7 +108,15 @@ public class ProductVariantsController : ControllerBase
 
 		return NoContent();
 	}
+	[HttpGet("{id:int}/stock-movements")]
+	public async Task<ActionResult<PagedResultDto<StockMovementDto>>> GetStockMovements(
+	int id,
+	[FromQuery] PagedRequestDto input)
+	{
+		var movements = await _productVariantService.GetStockMovementsAsync(id, input);
 
+		return Ok(movements);
+	}
 	[HttpPost("{id:int}/restore")]
 	public async Task<ActionResult> Restore(int id)
 	{
