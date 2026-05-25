@@ -40,30 +40,35 @@ public class ProductsController : ControllerBase
 
 	// POST: /api/Products
 	[HttpPost]
-	public async Task<ActionResult<ProductDto>> Create(CreateProductDto dto)
+	public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
 	{
-		var product = await _productService.CreateAsync(dto);
+		var result = await _productService.CreateAsync(dto);
 
-		if (product == null)
+		if (!result.IsSuccess)
 		{
-			return BadRequest("Category does not exist.");
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(product);
+		return Ok(result.Data);
 	}
 
 	// PUT: /api/Products/{id}
 	[HttpPut("{id:int}")]
-	public async Task<ActionResult<ProductDto>> Update(int id, UpdateProductDto dto)
+	public async Task<ActionResult<ProductDto>> Update(int id, [FromBody] UpdateProductDto dto)
 	{
-		var product = await _productService.UpdateAsync(id, dto);
+		var result = await _productService.UpdateAsync(id, dto);
 
-		if (product == null)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Product does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(product);
+		return Ok(result.Data);
 	}
 
 	// DELETE: /api/Products/{id}

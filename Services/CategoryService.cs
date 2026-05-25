@@ -40,13 +40,11 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
-
 				SizeType = new LookupDto
 				{
 					Id = (int)category.SizeType,
 					Name = category.SizeType.ToString()
 				},
-
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -69,13 +67,11 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
-
 				SizeType = new LookupDto
 				{
 					Id = (int)category.SizeType,
 					Name = category.SizeType.ToString()
 				},
-
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -88,7 +84,7 @@ public class CategoryService : ICategoryService
 	{
 		var category = new Category
 		{
-			Name = dto.Name,
+			Name = dto.Name.Trim(),
 			Description = dto.Description,
 			IsActive = dto.IsActive,
 			SizeType = dto.SizeType
@@ -101,17 +97,30 @@ public class CategoryService : ICategoryService
 		return MapToDto(category);
 	}
 
-	public async Task<CategoryDto?> UpdateAsync(int id, UpdateCategoryDto dto)
+	public async Task<ServiceResult<CategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto)
 	{
 		var category = await _context.Categories
 			.FirstOrDefaultAsync(category => category.Id == id);
 
 		if (category == null)
 		{
-			return null;
+			return ServiceResult<CategoryDto>.Failure("Category does not exist.");
 		}
 
-		category.Name = dto.Name;
+		if (category.SizeType != dto.SizeType)
+		{
+			var hasProducts = await _context.Products
+				.IgnoreQueryFilters()
+				.AnyAsync(product => product.CategoryId == category.Id);
+
+			if (hasProducts)
+			{
+				return ServiceResult<CategoryDto>.Failure(
+					"Cannot change category size type because this category is already used by products.");
+			}
+		}
+
+		category.Name = dto.Name.Trim();
 		category.Description = dto.Description;
 		category.IsActive = dto.IsActive;
 		category.SizeType = dto.SizeType;
@@ -119,17 +128,27 @@ public class CategoryService : ICategoryService
 
 		await _context.SaveChangesAsync();
 
-		return MapToDto(category);
+		return ServiceResult<CategoryDto>.Success(MapToDto(category));
 	}
 
-	public async Task<bool> DeleteAsync(int id)
+	public async Task<ServiceResult<bool>> DeleteAsync(int id)
 	{
 		var category = await _context.Categories
 			.FirstOrDefaultAsync(category => category.Id == id);
 
 		if (category == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Category does not exist.");
+		}
+
+		var hasProducts = await _context.Products
+			.IgnoreQueryFilters()
+			.AnyAsync(product => product.CategoryId == category.Id);
+
+		if (hasProducts)
+		{
+			return ServiceResult<bool>.Failure(
+				"Cannot delete category because it is already used by products.");
 		}
 
 		category.IsDeleted = true;
@@ -138,7 +157,7 @@ public class CategoryService : ICategoryService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
 
 	public async Task<bool> RestoreAsync(int id)
@@ -189,13 +208,11 @@ public class CategoryService : ICategoryService
 				Name = category.Name,
 				Description = category.Description,
 				IsActive = category.IsActive,
-
 				SizeType = new LookupDto
 				{
 					Id = (int)category.SizeType,
 					Name = category.SizeType.ToString()
 				},
-
 				CreatedAt = category.CreatedAt,
 				UpdatedAt = category.UpdatedAt
 			})
@@ -216,13 +233,11 @@ public class CategoryService : ICategoryService
 			Name = category.Name,
 			Description = category.Description,
 			IsActive = category.IsActive,
-
 			SizeType = new LookupDto
 			{
 				Id = (int)category.SizeType,
 				Name = category.SizeType.ToString()
 			},
-
 			CreatedAt = category.CreatedAt,
 			UpdatedAt = category.UpdatedAt
 		};

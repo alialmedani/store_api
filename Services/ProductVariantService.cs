@@ -395,15 +395,29 @@ public class ProductVariantService : IProductVariantService
 			})
 			.ToListAsync();
 
-		var hasExistingDuplicate = generatedItems.Any(item =>
-			existingVariants.Any(existing =>
-				existing.ColorKey == item.ColorKey &&
-				existing.SizeKey == item.SizeKey));
+		var existingKeys = existingVariants
+			.Select(variant => $"{variant.ColorKey}|{variant.SizeKey}")
+			.ToHashSet();
 
-		if (hasExistingDuplicate)
+		var hasExistingDuplicate = generatedItems.Any(item =>
+			existingKeys.Contains($"{item.ColorKey}|{item.SizeKey}"));
+
+		if (hasExistingDuplicate && !dto.SkipExisting)
 		{
 			return ServiceResult<List<ProductVariantDto>>.Failure(
-				"One or more generated variants already exist. Use adjust-stock to increase or decrease quantity.");
+				"One or more generated variants already exist. Use adjust-stock to increase or decrease quantity, or set skipExisting to true.");
+		}
+
+		if (dto.SkipExisting)
+		{
+			generatedItems = generatedItems
+				.Where(item => !existingKeys.Contains($"{item.ColorKey}|{item.SizeKey}"))
+				.ToList();
+		}
+
+		if (generatedItems.Count == 0)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Success(new List<ProductVariantDto>());
 		}
 
 		var variants = generatedItems
@@ -503,19 +517,19 @@ public class ProductVariantService : IProductVariantService
 		return ServiceResult<ProductVariantDto>.Success(updatedVariant);
 	}
 
-	public async Task<ProductVariantDto?> AdjustStockAsync(int id, AdjustProductVariantStockDto dto)
+	public async Task<ServiceResult<ProductVariantDto>> AdjustStockAsync(int id, AdjustProductVariantStockDto dto)
 	{
 		var variant = await _context.ProductVariants
 			.FirstOrDefaultAsync(variant => variant.Id == id);
 
 		if (variant == null)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure("Variant does not exist.");
 		}
 
 		if (dto.QuantityChange == 0)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure("Quantity change cannot be zero.");
 		}
 
 		var oldQuantity = variant.StockQuantity;
@@ -523,7 +537,7 @@ public class ProductVariantService : IProductVariantService
 
 		if (newStockQuantity < 0)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure("Stock quantity cannot be negative.");
 		}
 
 		var movementType = dto.QuantityChange > 0
@@ -537,7 +551,7 @@ public class ProductVariantService : IProductVariantService
 			QuantityChange = dto.QuantityChange,
 			OldQuantity = oldQuantity,
 			NewQuantity = newStockQuantity,
-			Note = dto.Note
+			Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim()
 		};
 
 		variant.StockQuantity = newStockQuantity;
@@ -547,7 +561,14 @@ public class ProductVariantService : IProductVariantService
 
 		await _context.SaveChangesAsync();
 
-		return await GetByIdAsync(variant.Id);
+		var updatedVariant = await GetByIdAsync(variant.Id);
+
+		if (updatedVariant == null)
+		{
+			return ServiceResult<ProductVariantDto>.Failure("Stock was adjusted but variant could not be loaded.");
+		}
+
+		return ServiceResult<ProductVariantDto>.Success(updatedVariant);
 	}
 
 	public async Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input)

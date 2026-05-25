@@ -10,9 +10,9 @@ public interface ICategoryService
 
 	Task<CategoryDto> CreateAsync(CreateCategoryDto dto);
 
-	Task<CategoryDto?> UpdateAsync(int id, UpdateCategoryDto dto);
+	Task<ServiceResult<CategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto);
 
-	Task<bool> DeleteAsync(int id);
+	Task<ServiceResult<bool>> DeleteAsync(int id);
 
 	Task<bool> RestoreAsync(int id);
 

@@ -100,14 +100,19 @@ public class ProductVariantsController : ControllerBase
 	[HttpPost("{id:int}/adjust-stock")]
 	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, [FromBody] AdjustProductVariantStockDto dto)
 	{
-		var variant = await _productVariantService.AdjustStockAsync(id, dto);
+		var result = await _productVariantService.AdjustStockAsync(id, dto);
 
-		if (variant == null)
+		if (!result.IsSuccess)
 		{
-			return BadRequest("Variant does not exist, quantity change cannot be zero, or stock quantity cannot be negative.");
+			if (result.ErrorMessage == "Variant does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(variant);
+		return Ok(result.Data);
 	}
 
 	// GET: /api/ProductVariants/{id}/stock-movements

@@ -15,8 +15,7 @@ public interface IProductVariantService
 
 	Task<ServiceResult<ProductVariantDto>> UpdateAsync(int id, UpdateProductVariantDto dto);
 
-	Task<ProductVariantDto?> AdjustStockAsync(int id, AdjustProductVariantStockDto dto);
-
+	Task<ServiceResult<ProductVariantDto>> AdjustStockAsync(int id, AdjustProductVariantStockDto dto);
 	Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input);
 
 	Task<bool> DeleteAsync(int id);

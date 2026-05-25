@@ -40,7 +40,7 @@ public class CategoriesController : ControllerBase
 
 	// POST: /api/Categories
 	[HttpPost]
-	public async Task<ActionResult<CategoryDto>> Create(CreateCategoryDto dto)
+	public async Task<ActionResult<CategoryDto>> Create([FromBody] CreateCategoryDto dto)
 	{
 		var category = await _categoryService.CreateAsync(dto);
 
@@ -49,27 +49,37 @@ public class CategoriesController : ControllerBase
 
 	// PUT: /api/Categories/{id}
 	[HttpPut("{id:int}")]
-	public async Task<ActionResult<CategoryDto>> Update(int id, UpdateCategoryDto dto)
+	public async Task<ActionResult<CategoryDto>> Update(int id, [FromBody] UpdateCategoryDto dto)
 	{
-		var category = await _categoryService.UpdateAsync(id, dto);
+		var result = await _categoryService.UpdateAsync(id, dto);
 
-		if (category == null)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Category does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(category);
+		return Ok(result.Data);
 	}
 
 	// DELETE: /api/Categories/{id}
 	[HttpDelete("{id:int}")]
 	public async Task<ActionResult> Delete(int id)
 	{
-		var deleted = await _categoryService.DeleteAsync(id);
+		var result = await _categoryService.DeleteAsync(id);
 
-		if (!deleted)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Category does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();

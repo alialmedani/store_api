@@ -45,19 +45,16 @@ public class ProductService : IProductService
 					.Where(variant => !variant.IsDeleted)
 					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-
 				Category = new LookupDto
 				{
 					Id = product.CategoryId,
 					Name = product.Category.Name
 				},
-
 				TargetAudience = new LookupDto
 				{
 					Id = (int)product.TargetAudience,
 					Name = product.TargetAudience.ToString()
 				},
-
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
@@ -84,36 +81,30 @@ public class ProductService : IProductService
 					.Where(variant => !variant.IsDeleted)
 					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-
 				Category = new LookupDto
 				{
 					Id = product.CategoryId,
 					Name = product.Category.Name
 				},
-
 				TargetAudience = new LookupDto
 				{
 					Id = (int)product.TargetAudience,
 					Name = product.TargetAudience.ToString()
 				},
-
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt,
-
 				AvailableColors = product.Variants
 					.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
 					.Select(variant => variant.Color)
 					.Distinct()
 					.OrderBy(color => color)
 					.ToList(),
-
 				AvailableSizes = product.Variants
 					.Where(variant => !variant.IsDeleted && variant.StockQuantity > 0)
 					.Select(variant => variant.Size)
 					.Distinct()
 					.OrderBy(size => size)
 					.ToList(),
-
 				Variants = product.Variants
 					.Where(variant => !variant.IsDeleted)
 					.OrderBy(variant => variant.Color)
@@ -132,14 +123,14 @@ public class ProductService : IProductService
 		return product;
 	}
 
-	public async Task<ProductDto?> CreateAsync(CreateProductDto dto)
+	public async Task<ServiceResult<ProductDto>> CreateAsync(CreateProductDto dto)
 	{
 		var categoryExists = await _context.Categories
 			.AnyAsync(category => category.Id == dto.CategoryId);
 
 		if (!categoryExists)
 		{
-			return null;
+			return ServiceResult<ProductDto>.Failure("Category does not exist.");
 		}
 
 		var product = new Product
@@ -156,17 +147,24 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return await GetDtoByIdAsync(product.Id);
+		var createdProduct = await GetDtoByIdAsync(product.Id);
+
+		if (createdProduct == null)
+		{
+			return ServiceResult<ProductDto>.Failure("Product was created but could not be loaded.");
+		}
+
+		return ServiceResult<ProductDto>.Success(createdProduct);
 	}
 
-	public async Task<ProductDto?> UpdateAsync(int id, UpdateProductDto dto)
+	public async Task<ServiceResult<ProductDto>> UpdateAsync(int id, UpdateProductDto dto)
 	{
 		var product = await _context.Products
 			.FirstOrDefaultAsync(product => product.Id == id);
 
 		if (product == null)
 		{
-			return null;
+			return ServiceResult<ProductDto>.Failure("Product does not exist.");
 		}
 
 		var categoryExists = await _context.Categories
@@ -174,7 +172,20 @@ public class ProductService : IProductService
 
 		if (!categoryExists)
 		{
-			return null;
+			return ServiceResult<ProductDto>.Failure("Category does not exist.");
+		}
+
+		if (product.CategoryId != dto.CategoryId)
+		{
+			var hasVariants = await _context.ProductVariants
+				.IgnoreQueryFilters()
+				.AnyAsync(variant => variant.ProductId == product.Id);
+
+			if (hasVariants)
+			{
+				return ServiceResult<ProductDto>.Failure(
+					"Cannot change product category because this product already has variants.");
+			}
 		}
 
 		product.Name = dto.Name.Trim();
@@ -187,7 +198,14 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return await GetDtoByIdAsync(product.Id);
+		var updatedProduct = await GetDtoByIdAsync(product.Id);
+
+		if (updatedProduct == null)
+		{
+			return ServiceResult<ProductDto>.Failure("Product was updated but could not be loaded.");
+		}
+
+		return ServiceResult<ProductDto>.Success(updatedProduct);
 	}
 
 	public async Task<bool> DeleteAsync(int id)
@@ -262,19 +280,16 @@ public class ProductService : IProductService
 					.Where(variant => !variant.IsDeleted)
 					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-
 				Category = new LookupDto
 				{
 					Id = product.CategoryId,
 					Name = product.Category.Name
 				},
-
 				TargetAudience = new LookupDto
 				{
 					Id = (int)product.TargetAudience,
 					Name = product.TargetAudience.ToString()
 				},
-
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
@@ -301,19 +316,16 @@ public class ProductService : IProductService
 					.Where(variant => !variant.IsDeleted)
 					.Sum(variant => variant.StockQuantity),
 				IsActive = product.IsActive,
-
 				Category = new LookupDto
 				{
 					Id = product.CategoryId,
 					Name = product.Category.Name
 				},
-
 				TargetAudience = new LookupDto
 				{
 					Id = (int)product.TargetAudience,
 					Name = product.TargetAudience.ToString()
 				},
-
 				CreatedAt = product.CreatedAt,
 				UpdatedAt = product.UpdatedAt
 			})
