@@ -93,7 +93,7 @@ public class ProductVariantService : IProductVariantService
 		return variant;
 	}
 
-	public async Task<ProductVariantDto?> CreateAsync(CreateProductVariantDto dto)
+	public async Task<ServiceResult<ProductVariantDto>> CreateAsync(CreateProductVariantDto dto)
 	{
 		var productInfo = await _context.Products
 			.Where(product => product.Id == dto.ProductId)
@@ -106,15 +106,21 @@ public class ProductVariantService : IProductVariantService
 
 		if (productInfo == null)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure("Product does not exist.");
 		}
 
 		var color = NormalizeText(dto.Color);
+
+		if (string.IsNullOrWhiteSpace(color))
+		{
+			return ServiceResult<ProductVariantDto>.Failure("Color is required.");
+		}
+
 		var size = NormalizeSizeByCategory(dto.Size, productInfo.SizeType);
 
-		if (string.IsNullOrWhiteSpace(color) || string.IsNullOrWhiteSpace(size))
+		if (string.IsNullOrWhiteSpace(size))
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
 		}
 
 		var colorKey = NormalizeKey(color);
@@ -129,7 +135,8 @@ public class ProductVariantService : IProductVariantService
 
 		if (duplicateExists)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure(
+				"Variant already exists. Use adjust-stock to increase or decrease quantity.");
 		}
 
 		var variant = new ProductVariant
@@ -144,10 +151,17 @@ public class ProductVariantService : IProductVariantService
 
 		await _context.SaveChangesAsync();
 
-		return await GetByIdAsync(variant.Id);
+		var createdVariant = await GetByIdAsync(variant.Id);
+
+		if (createdVariant == null)
+		{
+			return ServiceResult<ProductVariantDto>.Failure("Variant was created but could not be loaded.");
+		}
+
+		return ServiceResult<ProductVariantDto>.Success(createdVariant);
 	}
 
-	public async Task<List<ProductVariantDto>?> BulkCreateAsync(CreateBulkProductVariantsDto dto)
+	public async Task<ServiceResult<List<ProductVariantDto>>> BulkCreateAsync(CreateBulkProductVariantsDto dto)
 	{
 		var productInfo = await _context.Products
 			.Where(product => product.Id == dto.ProductId)
@@ -160,7 +174,7 @@ public class ProductVariantService : IProductVariantService
 
 		if (productInfo == null)
 		{
-			return null;
+			return ServiceResult<List<ProductVariantDto>>.Failure("Product does not exist.");
 		}
 
 		var normalizedItems = dto.Variants
@@ -180,13 +194,18 @@ public class ProductVariantService : IProductVariantService
 			})
 			.ToList();
 
-		var hasInvalidItem = normalizedItems.Any(item =>
-			string.IsNullOrWhiteSpace(item.Color) ||
-			string.IsNullOrWhiteSpace(item.Size));
+		var hasInvalidColor = normalizedItems.Any(item => string.IsNullOrWhiteSpace(item.Color));
 
-		if (hasInvalidItem)
+		if (hasInvalidColor)
 		{
-			return null;
+			return ServiceResult<List<ProductVariantDto>>.Failure("All variants must have a color.");
+		}
+
+		var hasInvalidSize = normalizedItems.Any(item => string.IsNullOrWhiteSpace(item.Size));
+
+		if (hasInvalidSize)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
 		}
 
 		var hasDuplicateInRequest = normalizedItems
@@ -195,7 +214,8 @@ public class ProductVariantService : IProductVariantService
 
 		if (hasDuplicateInRequest)
 		{
-			return null;
+			return ServiceResult<List<ProductVariantDto>>.Failure(
+				"Request contains duplicate variants. The same color and size cannot be repeated for the same product.");
 		}
 
 		var existingVariants = await _context.ProductVariants
@@ -215,7 +235,8 @@ public class ProductVariantService : IProductVariantService
 
 		if (hasExistingDuplicate)
 		{
-			return null;
+			return ServiceResult<List<ProductVariantDto>>.Failure(
+				"One or more variants already exist. Use adjust-stock to increase or decrease quantity.");
 		}
 
 		var variants = normalizedItems
@@ -253,10 +274,176 @@ public class ProductVariantService : IProductVariantService
 			})
 			.ToListAsync();
 
-		return result;
+		return ServiceResult<List<ProductVariantDto>>.Success(result);
 	}
+	public async Task<ServiceResult<List<ProductVariantDto>>> GenerateAsync(GenerateProductVariantsDto dto)
+	{
+		var productInfo = await _context.Products
+			.Where(product => product.Id == dto.ProductId)
+			.Select(product => new
+			{
+				product.Id,
+				SizeType = product.Category.SizeType
+			})
+			.FirstOrDefaultAsync();
 
-	public async Task<ProductVariantDto?> UpdateAsync(int id, UpdateProductVariantDto dto)
+		if (productInfo == null)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Failure("Product does not exist.");
+		}
+
+		var colors = dto.Colors
+			.Select(NormalizeText)
+			.Where(color => !string.IsNullOrWhiteSpace(color))
+			.GroupBy(NormalizeKey)
+			.Select(group => group.First())
+			.ToList();
+
+		if (colors.Count == 0)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Failure("At least one color is required.");
+		}
+
+		var rawSizes = dto.Sizes?
+			.Select(NormalizeText)
+			.Where(size => !string.IsNullOrWhiteSpace(size))
+			.ToList() ?? new List<string>();
+
+		List<string> sizes;
+
+		if (productInfo.SizeType == CategorySizeType.None)
+		{
+			if (rawSizes.Count > 0)
+			{
+				return ServiceResult<List<ProductVariantDto>>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
+			}
+
+			sizes = new List<string> { NoSizeLabel };
+		}
+		else if (productInfo.SizeType == CategorySizeType.OneSize)
+		{
+			if (rawSizes.Count == 0)
+			{
+				sizes = new List<string> { OneSizeLabel };
+			}
+			else
+			{
+				sizes = rawSizes
+					.Select(size => NormalizeSizeByCategory(size, productInfo.SizeType))
+					.Where(size => !string.IsNullOrWhiteSpace(size))
+					.Select(size => size!)
+					.GroupBy(NormalizeKey)
+					.Select(group => group.First())
+					.ToList();
+
+				if (sizes.Count == 0)
+				{
+					return ServiceResult<List<ProductVariantDto>>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
+				}
+			}
+		}
+		else
+		{
+			if (rawSizes.Count == 0)
+			{
+				return ServiceResult<List<ProductVariantDto>>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
+			}
+
+			var normalizedSizes = rawSizes
+				.Select(size => NormalizeSizeByCategory(size, productInfo.SizeType))
+				.ToList();
+
+			if (normalizedSizes.Any(size => string.IsNullOrWhiteSpace(size)))
+			{
+				return ServiceResult<List<ProductVariantDto>>.Failure(GetInvalidSizeMessage(productInfo.SizeType));
+			}
+
+			sizes = normalizedSizes
+				.Select(size => size!)
+				.GroupBy(NormalizeKey)
+				.Select(group => group.First())
+				.ToList();
+		}
+
+		var generatedItems = colors
+			.SelectMany(color => sizes.Select(size => new
+			{
+				Color = color,
+				Size = size,
+				ColorKey = NormalizeKey(color),
+				SizeKey = NormalizeKey(size)
+			}))
+			.ToList();
+
+		var hasDuplicateInGeneratedItems = generatedItems
+			.GroupBy(item => new { item.ColorKey, item.SizeKey })
+			.Any(group => group.Count() > 1);
+
+		if (hasDuplicateInGeneratedItems)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Failure(
+				"Generated variants contain duplicates. Check colors and sizes.");
+		}
+
+		var existingVariants = await _context.ProductVariants
+			.IgnoreQueryFilters()
+			.Where(variant => variant.ProductId == dto.ProductId)
+			.Select(variant => new
+			{
+				ColorKey = variant.Color.ToLower(),
+				SizeKey = variant.Size.ToLower()
+			})
+			.ToListAsync();
+
+		var hasExistingDuplicate = generatedItems.Any(item =>
+			existingVariants.Any(existing =>
+				existing.ColorKey == item.ColorKey &&
+				existing.SizeKey == item.SizeKey));
+
+		if (hasExistingDuplicate)
+		{
+			return ServiceResult<List<ProductVariantDto>>.Failure(
+				"One or more generated variants already exist. Use adjust-stock to increase or decrease quantity.");
+		}
+
+		var variants = generatedItems
+			.Select(item => new ProductVariant
+			{
+				ProductId = dto.ProductId,
+				Color = item.Color,
+				Size = item.Size,
+				StockQuantity = dto.DefaultStockQuantity
+			})
+			.ToList();
+
+		_context.ProductVariants.AddRange(variants);
+
+		await _context.SaveChangesAsync();
+
+		var createdIds = variants
+			.Select(variant => variant.Id)
+			.ToList();
+
+		var result = await _context.ProductVariants
+			.Where(variant => createdIds.Contains(variant.Id))
+			.OrderBy(variant => variant.Color)
+			.ThenBy(variant => variant.Size)
+			.Select(variant => new ProductVariantDto
+			{
+				Id = variant.Id,
+				ProductId = variant.ProductId,
+				ProductName = variant.Product.Name,
+				Color = variant.Color,
+				Size = variant.Size,
+				StockQuantity = variant.StockQuantity,
+				CreatedAt = variant.CreatedAt,
+				UpdatedAt = variant.UpdatedAt
+			})
+			.ToListAsync();
+
+		return ServiceResult<List<ProductVariantDto>>.Success(result);
+	}
+	public async Task<ServiceResult<ProductVariantDto>> UpdateAsync(int id, UpdateProductVariantDto dto)
 	{
 		var variant = await _context.ProductVariants
 			.Include(variant => variant.Product)
@@ -265,15 +452,21 @@ public class ProductVariantService : IProductVariantService
 
 		if (variant == null)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure("Variant does not exist.");
 		}
 
 		var color = NormalizeText(dto.Color);
+
+		if (string.IsNullOrWhiteSpace(color))
+		{
+			return ServiceResult<ProductVariantDto>.Failure("Color is required.");
+		}
+
 		var size = NormalizeSizeByCategory(dto.Size, variant.Product.Category.SizeType);
 
-		if (string.IsNullOrWhiteSpace(color) || string.IsNullOrWhiteSpace(size))
+		if (string.IsNullOrWhiteSpace(size))
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure(GetInvalidSizeMessage(variant.Product.Category.SizeType));
 		}
 
 		var colorKey = NormalizeKey(color);
@@ -289,7 +482,8 @@ public class ProductVariantService : IProductVariantService
 
 		if (duplicateExists)
 		{
-			return null;
+			return ServiceResult<ProductVariantDto>.Failure(
+				"Another variant with the same color and size already exists. Use adjust-stock instead.");
 		}
 
 		variant.Color = color;
@@ -299,7 +493,14 @@ public class ProductVariantService : IProductVariantService
 
 		await _context.SaveChangesAsync();
 
-		return await GetByIdAsync(variant.Id);
+		var updatedVariant = await GetByIdAsync(variant.Id);
+
+		if (updatedVariant == null)
+		{
+			return ServiceResult<ProductVariantDto>.Failure("Variant was updated but could not be loaded.");
+		}
+
+		return ServiceResult<ProductVariantDto>.Success(updatedVariant);
 	}
 
 	public async Task<ProductVariantDto?> AdjustStockAsync(int id, AdjustProductVariantStockDto dto)
@@ -690,5 +891,32 @@ public class ProductVariantService : IProductVariantService
 		}
 
 		return normalizedSize;
+	}
+
+	private static string GetInvalidSizeMessage(CategorySizeType sizeType)
+	{
+		return sizeType switch
+		{
+			CategorySizeType.None =>
+				"This category does not support sizes. Send no size value.",
+
+			CategorySizeType.OneSize =>
+				"This category supports one size only. Send no size value or use 'One Size'.",
+
+			CategorySizeType.ShoeNumeric =>
+				"Shoes category accepts numeric sizes only, for example 40, 41, 42.",
+
+			CategorySizeType.ClothingLetter =>
+				"Clothes category accepts these sizes only: XS, S, M, L, XL, XXL, XXXL, 2XL, 3XL, 4XL.",
+
+			CategorySizeType.KidsAge =>
+				"Kids age size is required, for example 2Y, 3Y, 4Y.",
+
+			CategorySizeType.Custom =>
+				"Custom size is required.",
+
+			_ =>
+				"Size is not valid for this product category."
+		};
 	}
 }

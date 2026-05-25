@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using Store.Models;
 
 namespace Store.Data;
@@ -11,21 +12,43 @@ public class AppDbContext : DbContext
 	}
 
 	public DbSet<Category> Categories => Set<Category>();
-	public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
 	public DbSet<Product> Products => Set<Product>();
+
 	public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+
+	public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
+		base.OnModelCreating(modelBuilder);
+
+		modelBuilder.Entity<Category>()
+			.HasQueryFilter(category => !category.IsDeleted);
+
+		modelBuilder.Entity<Product>()
+			.HasQueryFilter(product => !product.IsDeleted);
+
 		modelBuilder.Entity<ProductVariant>()
-	.HasQueryFilter(variant => !variant.IsDeleted);
-		modelBuilder.Entity<StockMovement>()
-		.HasQueryFilter(movement => !movement.IsDeleted);
+			.HasQueryFilter(variant => !variant.IsDeleted);
 
 		modelBuilder.Entity<StockMovement>()
-			.HasOne(movement => movement.ProductVariant)
-			.WithMany(variant => variant.StockMovements)
-			.HasForeignKey(movement => movement.ProductVariantId)
-			.OnDelete(DeleteBehavior.Cascade);
+			.HasQueryFilter(movement => !movement.IsDeleted);
+
+		modelBuilder.Entity<Product>()
+			.Property(product => product.Price)
+			.HasPrecision(18, 2);
+
+		modelBuilder.Entity<Product>()
+			.Property(product => product.TargetAudience)
+			.HasDefaultValue(ProductTargetAudience.Unisex);
+
+		modelBuilder.Entity<Product>()
+			.HasOne(product => product.Category)
+			.WithMany(category => category.Products)
+			.HasForeignKey(product => product.CategoryId)
+			.OnDelete(DeleteBehavior.Restrict);
+
 		modelBuilder.Entity<ProductVariant>()
 			.HasOne(variant => variant.Product)
 			.WithMany(product => product.Variants)
@@ -35,26 +58,11 @@ public class AppDbContext : DbContext
 		modelBuilder.Entity<ProductVariant>()
 			.HasIndex(variant => new { variant.ProductId, variant.Color, variant.Size })
 			.IsUnique();
-		base.OnModelCreating(modelBuilder);
 
-		modelBuilder.Entity<Category>()
-			.HasQueryFilter(category => !category.IsDeleted);
-
-		modelBuilder.Entity<Product>()
-			.HasQueryFilter(product => !product.IsDeleted);
-
-		modelBuilder.Entity<Product>()
-			.Property(product => product.Price)
-			.HasPrecision(18, 2);
-		modelBuilder.Entity<Product>()
-.Property(product => product.TargetAudience)
-.HasDefaultValue(ProductTargetAudience.Unisex);
-
-		modelBuilder.Entity<Product>()
-			.HasOne(product => product.Category)
-			.WithMany(category => category.Products)
-			.HasForeignKey(product => product.CategoryId)
-			.OnDelete(DeleteBehavior.Restrict);
+		modelBuilder.Entity<StockMovement>()
+			.HasOne(movement => movement.ProductVariant)
+			.WithMany(variant => variant.StockMovements)
+			.HasForeignKey(movement => movement.ProductVariantId)
+			.OnDelete(DeleteBehavior.Cascade);
 	}
-
 }

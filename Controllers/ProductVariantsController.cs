@@ -42,49 +42,63 @@ public class ProductVariantsController : ControllerBase
 
 	// POST: /api/ProductVariants
 	[HttpPost]
-	public async Task<ActionResult<ProductVariantDto>> Create(CreateProductVariantDto dto)
+	public async Task<ActionResult<ProductVariantDto>> Create([FromBody] CreateProductVariantDto dto)
 	{
-		var variant = await _productVariantService.CreateAsync(dto);
+		var result = await _productVariantService.CreateAsync(dto);
 
-		if (variant == null)
+		if (!result.IsSuccess)
 		{
-			return BadRequest("Product does not exist, variant already exists, or size is not valid for this product category.");
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(variant);
+		return Ok(result.Data);
 	}
 
 	// POST: /api/ProductVariants/bulk
 	[HttpPost("bulk")]
-	public async Task<ActionResult<List<ProductVariantDto>>> BulkCreate(CreateBulkProductVariantsDto dto)
+	public async Task<ActionResult<List<ProductVariantDto>>> BulkCreate([FromBody] CreateBulkProductVariantsDto dto)
 	{
-		var variants = await _productVariantService.BulkCreateAsync(dto);
+		var result = await _productVariantService.BulkCreateAsync(dto);
 
-		if (variants == null)
+		if (!result.IsSuccess)
 		{
-			return BadRequest("Product does not exist, duplicate variant exists, request contains duplicates, or one of the sizes is not valid for this product category.");
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(variants);
+		return Ok(result.Data);
+	}
+
+	// POST: /api/ProductVariants/generate
+	[HttpPost("generate")]
+	public async Task<ActionResult<List<ProductVariantDto>>> Generate([FromBody] GenerateProductVariantsDto dto)
+	{
+		var result = await _productVariantService.GenerateAsync(dto);
+
+		if (!result.IsSuccess)
+		{
+			return BadRequest(result.ErrorMessage);
+		}
+
+		return Ok(result.Data);
 	}
 
 	// PUT: /api/ProductVariants/{id}
 	[HttpPut("{id:int}")]
-	public async Task<ActionResult<ProductVariantDto>> Update(int id, UpdateProductVariantDto dto)
+	public async Task<ActionResult<ProductVariantDto>> Update(int id, [FromBody] UpdateProductVariantDto dto)
 	{
-		var variant = await _productVariantService.UpdateAsync(id, dto);
+		var result = await _productVariantService.UpdateAsync(id, dto);
 
-		if (variant == null)
+		if (!result.IsSuccess)
 		{
-			return BadRequest("Variant does not exist, duplicate variant exists, or size is not valid for this product category.");
+			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(variant);
+		return Ok(result.Data);
 	}
 
 	// POST: /api/ProductVariants/{id}/adjust-stock
 	[HttpPost("{id:int}/adjust-stock")]
-	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, AdjustProductVariantStockDto dto)
+	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, [FromBody] AdjustProductVariantStockDto dto)
 	{
 		var variant = await _productVariantService.AdjustStockAsync(id, dto);
 
