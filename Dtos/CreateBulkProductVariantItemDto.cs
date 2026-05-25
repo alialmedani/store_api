@@ -4,9 +4,8 @@ namespace Store.Dtos;
 
 public class CreateBulkProductVariantItemDto
 {
-	[Required]
 	[MaxLength(50)]
-	public string Color { get; set; } = string.Empty;
+	public string? Color { get; set; }
 
 	[MaxLength(20)]
 	public string? Size { get; set; }

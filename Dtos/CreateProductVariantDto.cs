@@ -7,9 +7,8 @@ public class CreateProductVariantDto
 	[Range(1, int.MaxValue)]
 	public int ProductId { get; set; }
 
-	[Required]
 	[MaxLength(50)]
-	public string Color { get; set; } = string.Empty;
+	public string? Color { get; set; }
 
 	[MaxLength(20)]
 	public string? Size { get; set; }

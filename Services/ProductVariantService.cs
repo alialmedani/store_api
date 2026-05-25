@@ -7,6 +7,7 @@ namespace Store.Services;
 
 public class ProductVariantService : IProductVariantService
 {
+	private const string NoColorLabel = "No Color";
 	private const string NoSizeLabel = "No Size";
 	private const string OneSizeLabel = "One Size";
 
@@ -112,13 +113,7 @@ public class ProductVariantService : IProductVariantService
 			return ServiceResult<ProductVariantDto>.Failure("Product does not exist.");
 		}
 
-		var color = NormalizeText(dto.Color);
-
-		if (string.IsNullOrWhiteSpace(color))
-		{
-			return ServiceResult<ProductVariantDto>.Failure("Color is required.");
-		}
-
+		var color = NormalizeColor(dto.Color);
 		var size = NormalizeSizeByCategory(dto.Size, productInfo.SizeType);
 
 		if (string.IsNullOrWhiteSpace(size))
@@ -185,7 +180,7 @@ public class ProductVariantService : IProductVariantService
 		var normalizedItems = dto.Variants
 			.Select(variant =>
 			{
-				var color = NormalizeText(variant.Color);
+				var color = NormalizeColor(variant.Color);
 				var size = NormalizeSizeByCategory(variant.Size, productInfo.SizeType);
 
 				return new
@@ -198,13 +193,6 @@ public class ProductVariantService : IProductVariantService
 				};
 			})
 			.ToList();
-
-		var hasInvalidColor = normalizedItems.Any(item => string.IsNullOrWhiteSpace(item.Color));
-
-		if (hasInvalidColor)
-		{
-			return ServiceResult<List<ProductVariantDto>>.Failure("All variants must have a color.");
-		}
 
 		var hasInvalidSize = normalizedItems.Any(item => string.IsNullOrWhiteSpace(item.Size));
 
@@ -301,17 +289,17 @@ public class ProductVariantService : IProductVariantService
 			return ServiceResult<List<ProductVariantDto>>.Failure("Product does not exist.");
 		}
 
-		var colors = dto.Colors
+		var rawColors = dto.Colors?
 			.Select(NormalizeText)
 			.Where(color => !string.IsNullOrWhiteSpace(color))
-			.GroupBy(NormalizeKey)
-			.Select(group => group.First())
-			.ToList();
+			.ToList() ?? new List<string>();
 
-		if (colors.Count == 0)
-		{
-			return ServiceResult<List<ProductVariantDto>>.Failure("At least one color is required.");
-		}
+		var colors = rawColors.Count == 0
+			? new List<string> { NoColorLabel }
+			: rawColors
+				.GroupBy(NormalizeKey)
+				.Select(group => group.First())
+				.ToList();
 
 		var rawSizes = dto.Sizes?
 			.Select(NormalizeText)
@@ -481,13 +469,7 @@ public class ProductVariantService : IProductVariantService
 			return ServiceResult<ProductVariantDto>.Failure("Variant does not exist.");
 		}
 
-		var color = NormalizeText(dto.Color);
-
-		if (string.IsNullOrWhiteSpace(color))
-		{
-			return ServiceResult<ProductVariantDto>.Failure("Color is required.");
-		}
-
+		var color = NormalizeColor(dto.Color);
 		var size = NormalizeSizeByCategory(dto.Size, variant.Product.Category.SizeType);
 
 		if (string.IsNullOrWhiteSpace(size))
@@ -787,7 +769,7 @@ public class ProductVariantService : IProductVariantService
 
 	public async Task<List<string>> GetAvailableSizesByColorAsync(int productId, string color)
 	{
-		var normalizedColorKey = NormalizeKey(color);
+		var normalizedColorKey = NormalizeKey(NormalizeColor(color));
 
 		var sizes = await _context.ProductVariants
 			.AsNoTracking()
@@ -891,6 +873,15 @@ public class ProductVariantService : IProductVariantService
 	private static string NormalizeKey(string? value)
 	{
 		return NormalizeText(value).ToLower();
+	}
+
+	private static string NormalizeColor(string? color)
+	{
+		var normalizedColor = NormalizeText(color);
+
+		return string.IsNullOrWhiteSpace(normalizedColor)
+			? NoColorLabel
+			: normalizedColor;
 	}
 
 	private static string? NormalizeSizeByCategory(string? size, CategorySizeType sizeType)

@@ -7,9 +7,7 @@ public class GenerateProductVariantsDto
 	[Range(1, int.MaxValue)]
 	public int ProductId { get; set; }
 
-	[Required]
-	[MinLength(1)]
-	public List<string> Colors { get; set; } = new();
+	public List<string>? Colors { get; set; }
 
 	public List<string>? Sizes { get; set; }
 
