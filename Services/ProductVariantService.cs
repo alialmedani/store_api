@@ -640,7 +640,7 @@ public class ProductVariantService : IProductVariantService
 		return true;
 	}
 
-	public async Task<bool> RestoreAsync(int id)
+	public async Task<ServiceResult<bool>> RestoreAsync(int id)
 	{
 		var variant = await _context.ProductVariants
 			.IgnoreQueryFilters()
@@ -648,7 +648,25 @@ public class ProductVariantService : IProductVariantService
 
 		if (variant == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Variant does not exist or is not deleted.");
+		}
+
+		var colorKey = NormalizeKey(variant.Color);
+		var sizeKey = NormalizeKey(variant.Size);
+
+		var duplicateExists = await _context.ProductVariants
+			.IgnoreQueryFilters()
+			.AnyAsync(otherVariant =>
+				otherVariant.Id != variant.Id &&
+				!otherVariant.IsDeleted &&
+				otherVariant.ProductId == variant.ProductId &&
+				otherVariant.Color.ToLower() == colorKey &&
+				otherVariant.Size.ToLower() == sizeKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<bool>.Failure(
+				"Cannot restore variant because another active variant with the same color and size already exists.");
 		}
 
 		variant.IsDeleted = false;
@@ -657,7 +675,7 @@ public class ProductVariantService : IProductVariantService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
 
 	public async Task<PagedResultDto<ProductVariantDto>> GetDeletedAsync(PagedRequestDto input)

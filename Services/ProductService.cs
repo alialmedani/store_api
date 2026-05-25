@@ -133,9 +133,24 @@ public class ProductService : IProductService
 			return ServiceResult<ProductDto>.Failure("Category does not exist.");
 		}
 
+		var name = dto.Name.Trim();
+		var nameKey = name.ToLower();
+
+		var duplicateExists = await _context.Products
+			.IgnoreQueryFilters()
+			.AnyAsync(product =>
+				!product.IsDeleted &&
+				product.CategoryId == dto.CategoryId &&
+				product.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<ProductDto>.Failure("Product name already exists in this category.");
+		}
+
 		var product = new Product
 		{
-			Name = dto.Name.Trim(),
+			Name = name,
 			Description = dto.Description,
 			Price = dto.Price,
 			IsActive = dto.IsActive,
@@ -175,6 +190,22 @@ public class ProductService : IProductService
 			return ServiceResult<ProductDto>.Failure("Category does not exist.");
 		}
 
+		var name = dto.Name.Trim();
+		var nameKey = name.ToLower();
+
+		var duplicateExists = await _context.Products
+			.IgnoreQueryFilters()
+			.AnyAsync(otherProduct =>
+				otherProduct.Id != id &&
+				!otherProduct.IsDeleted &&
+				otherProduct.CategoryId == dto.CategoryId &&
+				otherProduct.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<ProductDto>.Failure("Product name already exists in this category.");
+		}
+
 		if (product.CategoryId != dto.CategoryId)
 		{
 			var hasVariants = await _context.ProductVariants
@@ -188,7 +219,7 @@ public class ProductService : IProductService
 			}
 		}
 
-		product.Name = dto.Name.Trim();
+		product.Name = name;
 		product.Description = dto.Description;
 		product.Price = dto.Price;
 		product.IsActive = dto.IsActive;

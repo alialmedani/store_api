@@ -189,11 +189,16 @@ public class ProductVariantsController : ControllerBase
 	[HttpPost("{id:int}/restore")]
 	public async Task<ActionResult> Restore(int id)
 	{
-		var restored = await _productVariantService.RestoreAsync(id);
+		var result = await _productVariantService.RestoreAsync(id);
 
-		if (!restored)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Variant does not exist or is not deleted.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();

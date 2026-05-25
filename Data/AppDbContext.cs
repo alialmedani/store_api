@@ -1,5 +1,4 @@
-﻿
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Store.Models;
 
 namespace Store.Data;
@@ -35,6 +34,18 @@ public class AppDbContext : DbContext
 		modelBuilder.Entity<StockMovement>()
 			.HasQueryFilter(movement => !movement.IsDeleted);
 
+		modelBuilder.Entity<Category>()
+			.HasIndex(category => category.Name)
+			.HasDatabaseName("UX_Categories_Name_Active")
+			.IsUnique()
+			.HasFilter("[IsDeleted] = 0");
+
+		modelBuilder.Entity<Product>()
+			.HasIndex(product => new { product.CategoryId, product.Name })
+			.HasDatabaseName("UX_Products_CategoryId_Name_Active")
+			.IsUnique()
+			.HasFilter("[IsDeleted] = 0");
+
 		modelBuilder.Entity<Product>()
 			.Property(product => product.Price)
 			.HasPrecision(18, 2);
@@ -57,7 +68,9 @@ public class AppDbContext : DbContext
 
 		modelBuilder.Entity<ProductVariant>()
 			.HasIndex(variant => new { variant.ProductId, variant.Color, variant.Size })
-			.IsUnique();
+			.HasDatabaseName("UX_ProductVariants_ProductId_Color_Size_Active")
+			.IsUnique()
+			.HasFilter("[IsDeleted] = 0");
 
 		modelBuilder.Entity<StockMovement>()
 			.HasOne(movement => movement.ProductVariant)

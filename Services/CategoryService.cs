@@ -80,11 +80,25 @@ public class CategoryService : ICategoryService
 		return category;
 	}
 
-	public async Task<CategoryDto> CreateAsync(CreateCategoryDto dto)
+	public async Task<ServiceResult<CategoryDto>> CreateAsync(CreateCategoryDto dto)
 	{
+		var name = dto.Name.Trim();
+		var nameKey = name.ToLower();
+
+		var duplicateExists = await _context.Categories
+			.IgnoreQueryFilters()
+			.AnyAsync(category =>
+				!category.IsDeleted &&
+				category.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<CategoryDto>.Failure("Category name already exists.");
+		}
+
 		var category = new Category
 		{
-			Name = dto.Name.Trim(),
+			Name = name,
 			Description = dto.Description,
 			IsActive = dto.IsActive,
 			SizeType = dto.SizeType
@@ -94,7 +108,7 @@ public class CategoryService : ICategoryService
 
 		await _context.SaveChangesAsync();
 
-		return MapToDto(category);
+		return ServiceResult<CategoryDto>.Success(MapToDto(category));
 	}
 
 	public async Task<ServiceResult<CategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto)
@@ -105,6 +119,21 @@ public class CategoryService : ICategoryService
 		if (category == null)
 		{
 			return ServiceResult<CategoryDto>.Failure("Category does not exist.");
+		}
+
+		var name = dto.Name.Trim();
+		var nameKey = name.ToLower();
+
+		var duplicateExists = await _context.Categories
+			.IgnoreQueryFilters()
+			.AnyAsync(otherCategory =>
+				otherCategory.Id != id &&
+				!otherCategory.IsDeleted &&
+				otherCategory.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<CategoryDto>.Failure("Category name already exists.");
 		}
 
 		if (category.SizeType != dto.SizeType)
@@ -120,7 +149,7 @@ public class CategoryService : ICategoryService
 			}
 		}
 
-		category.Name = dto.Name.Trim();
+		category.Name = name;
 		category.Description = dto.Description;
 		category.IsActive = dto.IsActive;
 		category.SizeType = dto.SizeType;
@@ -130,7 +159,6 @@ public class CategoryService : ICategoryService
 
 		return ServiceResult<CategoryDto>.Success(MapToDto(category));
 	}
-
 	public async Task<ServiceResult<bool>> DeleteAsync(int id)
 	{
 		var category = await _context.Categories

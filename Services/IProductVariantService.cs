@@ -11,16 +11,18 @@ public interface IProductVariantService
 	Task<ServiceResult<ProductVariantDto>> CreateAsync(CreateProductVariantDto dto);
 
 	Task<ServiceResult<List<ProductVariantDto>>> BulkCreateAsync(CreateBulkProductVariantsDto dto);
+
 	Task<ServiceResult<List<ProductVariantDto>>> GenerateAsync(GenerateProductVariantsDto dto);
 
 	Task<ServiceResult<ProductVariantDto>> UpdateAsync(int id, UpdateProductVariantDto dto);
 
 	Task<ServiceResult<ProductVariantDto>> AdjustStockAsync(int id, AdjustProductVariantStockDto dto);
+
 	Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input);
 
 	Task<bool> DeleteAsync(int id);
 
-	Task<bool> RestoreAsync(int id);
+	Task<ServiceResult<bool>> RestoreAsync(int id);
 
 	Task<PagedResultDto<ProductVariantDto>> GetDeletedAsync(PagedRequestDto input);
 

@@ -42,9 +42,14 @@ public class CategoriesController : ControllerBase
 	[HttpPost]
 	public async Task<ActionResult<CategoryDto>> Create([FromBody] CreateCategoryDto dto)
 	{
-		var category = await _categoryService.CreateAsync(dto);
+		var result = await _categoryService.CreateAsync(dto);
 
-		return Ok(category);
+		if (!result.IsSuccess)
+		{
+			return BadRequest(result.ErrorMessage);
+		}
+
+		return Ok(result.Data);
 	}
 
 	// PUT: /api/Categories/{id}
