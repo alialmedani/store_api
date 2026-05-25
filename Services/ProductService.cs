@@ -16,7 +16,9 @@ public class ProductService : IProductService
 
 	public async Task<PagedResultDto<ProductDto>> GetAllAsync(PagedRequestDto input)
 	{
-		var query = _context.Products.AsQueryable();
+		var query = _context.Products
+			.AsNoTracking()
+			.AsQueryable();
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
 		{
@@ -70,6 +72,7 @@ public class ProductService : IProductService
 	public async Task<ProductDetailsDto?> GetByIdAsync(int id)
 	{
 		var product = await _context.Products
+			.AsNoTracking()
 			.Where(product => product.Id == id)
 			.Select(product => new ProductDetailsDto
 			{
@@ -239,14 +242,14 @@ public class ProductService : IProductService
 		return ServiceResult<ProductDto>.Success(updatedProduct);
 	}
 
-	public async Task<bool> DeleteAsync(int id)
+	public async Task<ServiceResult<bool>> DeleteAsync(int id)
 	{
 		var product = await _context.Products
 			.FirstOrDefaultAsync(product => product.Id == id);
 
 		if (product == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Product does not exist.");
 		}
 
 		product.IsDeleted = true;
@@ -255,10 +258,9 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
-
-	public async Task<bool> RestoreAsync(int id)
+	public async Task<ServiceResult<bool>> RestoreAsync(int id)
 	{
 		var product = await _context.Products
 			.IgnoreQueryFilters()
@@ -266,7 +268,31 @@ public class ProductService : IProductService
 
 		if (product == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Product does not exist or is not deleted.");
+		}
+
+		var categoryExists = await _context.Categories
+			.AnyAsync(category => category.Id == product.CategoryId);
+
+		if (!categoryExists)
+		{
+			return ServiceResult<bool>.Failure("Cannot restore product because its category does not exist or is deleted.");
+		}
+
+		var nameKey = product.Name.Trim().ToLower();
+
+		var duplicateExists = await _context.Products
+			.IgnoreQueryFilters()
+			.AnyAsync(otherProduct =>
+				otherProduct.Id != product.Id &&
+				!otherProduct.IsDeleted &&
+				otherProduct.CategoryId == product.CategoryId &&
+				otherProduct.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<bool>.Failure(
+				"Cannot restore product because another active product with the same name exists in this category.");
 		}
 
 		product.IsDeleted = false;
@@ -275,13 +301,14 @@ public class ProductService : IProductService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
 
 	public async Task<PagedResultDto<ProductDto>> GetDeletedAsync(PagedRequestDto input)
 	{
 		var query = _context.Products
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.Where(product => product.IsDeleted);
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
@@ -336,6 +363,7 @@ public class ProductService : IProductService
 	private async Task<ProductDto?> GetDtoByIdAsync(int id)
 	{
 		var product = await _context.Products
+			.AsNoTracking()
 			.Where(product => product.Id == id)
 			.Select(product => new ProductDto
 			{

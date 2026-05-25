@@ -17,6 +17,7 @@ public class ProductsController : ControllerBase
 
 	// GET: /api/Products
 	[HttpGet]
+	[ProducesResponseType(typeof(PagedResultDto<ProductDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<ProductDto>>> GetAll([FromQuery] PagedRequestDto input)
 	{
 		var products = await _productService.GetAllAsync(input);
@@ -26,6 +27,8 @@ public class ProductsController : ControllerBase
 
 	// GET: /api/Products/{id}
 	[HttpGet("{id:int}")]
+	[ProducesResponseType(typeof(ProductDetailsDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<ProductDetailsDto>> GetById(int id)
 	{
 		var product = await _productService.GetByIdAsync(id);
@@ -40,6 +43,8 @@ public class ProductsController : ControllerBase
 
 	// POST: /api/Products
 	[HttpPost]
+	[ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
 	{
 		var result = await _productService.CreateAsync(dto);
@@ -49,11 +54,22 @@ public class ProductsController : ControllerBase
 			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(result.Data);
+		if (result.Data == null)
+		{
+			return BadRequest("Product was created but could not be loaded.");
+		}
+
+		return CreatedAtAction(
+			nameof(GetById),
+			new { id = result.Data.Id },
+			result.Data);
 	}
 
 	// PUT: /api/Products/{id}
 	[HttpPut("{id:int}")]
+	[ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<ProductDto>> Update(int id, [FromBody] UpdateProductDto dto)
 	{
 		var result = await _productService.UpdateAsync(id, dto);
@@ -73,13 +89,20 @@ public class ProductsController : ControllerBase
 
 	// DELETE: /api/Products/{id}
 	[HttpDelete("{id:int}")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Delete(int id)
 	{
-		var deleted = await _productService.DeleteAsync(id);
+		var result = await _productService.DeleteAsync(id);
 
-		if (!deleted)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Product does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();
@@ -87,6 +110,7 @@ public class ProductsController : ControllerBase
 
 	// GET: /api/Products/deleted
 	[HttpGet("deleted")]
+	[ProducesResponseType(typeof(PagedResultDto<ProductDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<ProductDto>>> GetDeleted([FromQuery] PagedRequestDto input)
 	{
 		var products = await _productService.GetDeletedAsync(input);
@@ -96,13 +120,21 @@ public class ProductsController : ControllerBase
 
 	// POST: /api/Products/{id}/restore
 	[HttpPost("{id:int}/restore")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Restore(int id)
 	{
-		var restored = await _productService.RestoreAsync(id);
+		var result = await _productService.RestoreAsync(id);
 
-		if (!restored)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Product does not exist or is not deleted.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();

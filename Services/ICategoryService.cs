@@ -9,11 +9,12 @@ public interface ICategoryService
 	Task<CategoryDto?> GetByIdAsync(int id);
 
 	Task<ServiceResult<CategoryDto>> CreateAsync(CreateCategoryDto dto);
+
 	Task<ServiceResult<CategoryDto>> UpdateAsync(int id, UpdateCategoryDto dto);
 
 	Task<ServiceResult<bool>> DeleteAsync(int id);
 
-	Task<bool> RestoreAsync(int id);
+	Task<ServiceResult<bool>> RestoreAsync(int id);
 
 	Task<PagedResultDto<CategoryDto>> GetDeletedAsync(PagedRequestDto input);
 }

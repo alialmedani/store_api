@@ -19,9 +19,11 @@ public class LookupsController : ControllerBase
 
 	// GET: /api/Lookups/categories
 	[HttpGet("categories")]
+	[ProducesResponseType(typeof(List<CategoryLookupDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<List<CategoryLookupDto>>> GetCategories()
 	{
 		var items = await _context.Categories
+			.AsNoTracking()
 			.Where(category => category.IsActive)
 			.OrderBy(category => category.Name)
 			.Select(category => new CategoryLookupDto
@@ -41,6 +43,7 @@ public class LookupsController : ControllerBase
 
 	// GET: /api/Lookups/category-size-types
 	[HttpGet("category-size-types")]
+	[ProducesResponseType(typeof(List<LookupDto>), StatusCodes.Status200OK)]
 	public ActionResult<List<LookupDto>> GetCategorySizeTypes()
 	{
 		var items = Enum.GetValues<CategorySizeType>()
@@ -56,6 +59,7 @@ public class LookupsController : ControllerBase
 
 	// GET: /api/Lookups/sizes-by-category-size-type/{sizeType}
 	[HttpGet("sizes-by-category-size-type/{sizeType:int}")]
+	[ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
 	public ActionResult<List<string>> GetSizesByCategorySizeType([FromRoute] CategorySizeType sizeType)
 	{
 		var sizes = sizeType switch
@@ -63,7 +67,7 @@ public class LookupsController : ControllerBase
 			CategorySizeType.None => new List<string>(),
 
 			CategorySizeType.ShoeNumeric => Enumerable
-				.Range(36, 11) // 36 to 46
+				.Range(36, 11)
 				.Select(size => size.ToString())
 				.ToList(),
 
@@ -114,6 +118,7 @@ public class LookupsController : ControllerBase
 
 	// GET: /api/Lookups/product-target-audiences
 	[HttpGet("product-target-audiences")]
+	[ProducesResponseType(typeof(List<LookupDto>), StatusCodes.Status200OK)]
 	public ActionResult<List<LookupDto>> GetProductTargetAudiences()
 	{
 		var items = Enum.GetValues<ProductTargetAudience>()
@@ -129,6 +134,7 @@ public class LookupsController : ControllerBase
 
 	// GET: /api/Lookups/stock-movement-types
 	[HttpGet("stock-movement-types")]
+	[ProducesResponseType(typeof(List<LookupDto>), StatusCodes.Status200OK)]
 	public ActionResult<List<LookupDto>> GetStockMovementTypes()
 	{
 		var items = Enum.GetValues<StockMovementType>()

@@ -34,6 +34,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<PagedResultDto<ProductVariantDto>> GetByProductIdAsync(int productId, PagedRequestDto input)
 	{
 		var query = _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant => variant.ProductId == productId);
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
@@ -76,6 +77,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<ProductVariantDto?> GetByIdAsync(int id)
 	{
 		var variant = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant => variant.Id == id)
 			.Select(variant => new ProductVariantDto
 			{
@@ -96,6 +98,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<ServiceResult<ProductVariantDto>> CreateAsync(CreateProductVariantDto dto)
 	{
 		var productInfo = await _context.Products
+			.AsNoTracking()
 			.Where(product => product.Id == dto.ProductId)
 			.Select(product => new
 			{
@@ -128,6 +131,7 @@ public class ProductVariantService : IProductVariantService
 
 		var duplicateExists = await _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.AnyAsync(variant =>
 				variant.ProductId == dto.ProductId &&
 				variant.Color.ToLower() == colorKey &&
@@ -164,6 +168,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<ServiceResult<List<ProductVariantDto>>> BulkCreateAsync(CreateBulkProductVariantsDto dto)
 	{
 		var productInfo = await _context.Products
+			.AsNoTracking()
 			.Where(product => product.Id == dto.ProductId)
 			.Select(product => new
 			{
@@ -220,6 +225,7 @@ public class ProductVariantService : IProductVariantService
 
 		var existingVariants = await _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.Where(variant => variant.ProductId == dto.ProductId)
 			.Select(variant => new
 			{
@@ -258,6 +264,7 @@ public class ProductVariantService : IProductVariantService
 			.ToList();
 
 		var result = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant => createdIds.Contains(variant.Id))
 			.OrderBy(variant => variant.Color)
 			.ThenBy(variant => variant.Size)
@@ -276,9 +283,11 @@ public class ProductVariantService : IProductVariantService
 
 		return ServiceResult<List<ProductVariantDto>>.Success(result);
 	}
+
 	public async Task<ServiceResult<List<ProductVariantDto>>> GenerateAsync(GenerateProductVariantsDto dto)
 	{
 		var productInfo = await _context.Products
+			.AsNoTracking()
 			.Where(product => product.Id == dto.ProductId)
 			.Select(product => new
 			{
@@ -387,6 +396,7 @@ public class ProductVariantService : IProductVariantService
 
 		var existingVariants = await _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.Where(variant => variant.ProductId == dto.ProductId)
 			.Select(variant => new
 			{
@@ -439,6 +449,7 @@ public class ProductVariantService : IProductVariantService
 			.ToList();
 
 		var result = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant => createdIds.Contains(variant.Id))
 			.OrderBy(variant => variant.Color)
 			.ThenBy(variant => variant.Size)
@@ -457,6 +468,7 @@ public class ProductVariantService : IProductVariantService
 
 		return ServiceResult<List<ProductVariantDto>>.Success(result);
 	}
+
 	public async Task<ServiceResult<ProductVariantDto>> UpdateAsync(int id, UpdateProductVariantDto dto)
 	{
 		var variant = await _context.ProductVariants
@@ -488,6 +500,7 @@ public class ProductVariantService : IProductVariantService
 
 		var duplicateExists = await _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.AnyAsync(otherVariant =>
 				otherVariant.Id != id &&
 				otherVariant.ProductId == variant.ProductId &&
@@ -574,6 +587,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input)
 	{
 		var query = _context.StockMovements
+			.AsNoTracking()
 			.Where(movement => movement.ProductVariantId == variantId);
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
@@ -621,14 +635,14 @@ public class ProductVariantService : IProductVariantService
 		};
 	}
 
-	public async Task<bool> DeleteAsync(int id)
+	public async Task<ServiceResult<bool>> DeleteAsync(int id)
 	{
 		var variant = await _context.ProductVariants
 			.FirstOrDefaultAsync(variant => variant.Id == id);
 
 		if (variant == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Variant does not exist.");
 		}
 
 		variant.IsDeleted = true;
@@ -637,7 +651,7 @@ public class ProductVariantService : IProductVariantService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
 
 	public async Task<ServiceResult<bool>> RestoreAsync(int id)
@@ -656,6 +670,7 @@ public class ProductVariantService : IProductVariantService
 
 		var duplicateExists = await _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.AnyAsync(otherVariant =>
 				otherVariant.Id != variant.Id &&
 				!otherVariant.IsDeleted &&
@@ -682,6 +697,7 @@ public class ProductVariantService : IProductVariantService
 	{
 		var query = _context.ProductVariants
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.Where(variant => variant.IsDeleted);
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
@@ -724,6 +740,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<List<string>> GetAvailableColorsAsync(int productId)
 	{
 		var colors = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant =>
 				variant.ProductId == productId &&
 				variant.StockQuantity > 0)
@@ -738,6 +755,7 @@ public class ProductVariantService : IProductVariantService
 	public async Task<List<string>> GetAvailableSizesAsync(int productId)
 	{
 		var sizes = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant =>
 				variant.ProductId == productId &&
 				variant.StockQuantity > 0)
@@ -754,6 +772,7 @@ public class ProductVariantService : IProductVariantService
 		var normalizedSizeKey = NormalizeKey(size);
 
 		var colors = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant =>
 				variant.ProductId == productId &&
 				variant.Size.ToLower() == normalizedSizeKey &&
@@ -771,6 +790,7 @@ public class ProductVariantService : IProductVariantService
 		var normalizedColorKey = NormalizeKey(color);
 
 		var sizes = await _context.ProductVariants
+			.AsNoTracking()
 			.Where(variant =>
 				variant.ProductId == productId &&
 				variant.Color.ToLower() == normalizedColorKey &&

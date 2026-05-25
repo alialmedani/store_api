@@ -17,6 +17,7 @@ public class CategoriesController : ControllerBase
 
 	// GET: /api/Categories
 	[HttpGet]
+	[ProducesResponseType(typeof(PagedResultDto<CategoryDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetAll([FromQuery] PagedRequestDto input)
 	{
 		var categories = await _categoryService.GetAllAsync(input);
@@ -26,6 +27,8 @@ public class CategoriesController : ControllerBase
 
 	// GET: /api/Categories/{id}
 	[HttpGet("{id:int}")]
+	[ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<CategoryDto>> GetById(int id)
 	{
 		var category = await _categoryService.GetByIdAsync(id);
@@ -40,6 +43,8 @@ public class CategoriesController : ControllerBase
 
 	// POST: /api/Categories
 	[HttpPost]
+	[ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<CategoryDto>> Create([FromBody] CreateCategoryDto dto)
 	{
 		var result = await _categoryService.CreateAsync(dto);
@@ -49,11 +54,22 @@ public class CategoriesController : ControllerBase
 			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(result.Data);
+		if (result.Data == null)
+		{
+			return BadRequest("Category was created but could not be loaded.");
+		}
+
+		return CreatedAtAction(
+			nameof(GetById),
+			new { id = result.Data.Id },
+			result.Data);
 	}
 
 	// PUT: /api/Categories/{id}
 	[HttpPut("{id:int}")]
+	[ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<CategoryDto>> Update(int id, [FromBody] UpdateCategoryDto dto)
 	{
 		var result = await _categoryService.UpdateAsync(id, dto);
@@ -73,6 +89,9 @@ public class CategoriesController : ControllerBase
 
 	// DELETE: /api/Categories/{id}
 	[HttpDelete("{id:int}")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Delete(int id)
 	{
 		var result = await _categoryService.DeleteAsync(id);
@@ -92,6 +111,7 @@ public class CategoriesController : ControllerBase
 
 	// GET: /api/Categories/deleted
 	[HttpGet("deleted")]
+	[ProducesResponseType(typeof(PagedResultDto<CategoryDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetDeleted([FromQuery] PagedRequestDto input)
 	{
 		var categories = await _categoryService.GetDeletedAsync(input);
@@ -101,13 +121,21 @@ public class CategoriesController : ControllerBase
 
 	// POST: /api/Categories/{id}/restore
 	[HttpPost("{id:int}/restore")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Restore(int id)
 	{
-		var restored = await _categoryService.RestoreAsync(id);
+		var result = await _categoryService.RestoreAsync(id);
 
-		if (!restored)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Category does not exist or is not deleted.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();

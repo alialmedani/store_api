@@ -12,9 +12,9 @@ public interface IProductService
 
 	Task<ServiceResult<ProductDto>> UpdateAsync(int id, UpdateProductDto dto);
 
-	Task<bool> DeleteAsync(int id);
+	Task<ServiceResult<bool>> DeleteAsync(int id);
 
-	Task<bool> RestoreAsync(int id);
+	Task<ServiceResult<bool>> RestoreAsync(int id);
 
 	Task<PagedResultDto<ProductDto>> GetDeletedAsync(PagedRequestDto input);
 }

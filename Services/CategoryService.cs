@@ -16,7 +16,9 @@ public class CategoryService : ICategoryService
 
 	public async Task<PagedResultDto<CategoryDto>> GetAllAsync(PagedRequestDto input)
 	{
-		var query = _context.Categories.AsQueryable();
+		var query = _context.Categories
+			.AsNoTracking()
+			.AsQueryable();
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))
 		{
@@ -60,6 +62,7 @@ public class CategoryService : ICategoryService
 	public async Task<CategoryDto?> GetByIdAsync(int id)
 	{
 		var category = await _context.Categories
+			.AsNoTracking()
 			.Where(category => category.Id == id)
 			.Select(category => new CategoryDto
 			{
@@ -159,6 +162,7 @@ public class CategoryService : ICategoryService
 
 		return ServiceResult<CategoryDto>.Success(MapToDto(category));
 	}
+
 	public async Task<ServiceResult<bool>> DeleteAsync(int id)
 	{
 		var category = await _context.Categories
@@ -188,7 +192,7 @@ public class CategoryService : ICategoryService
 		return ServiceResult<bool>.Success(true);
 	}
 
-	public async Task<bool> RestoreAsync(int id)
+	public async Task<ServiceResult<bool>> RestoreAsync(int id)
 	{
 		var category = await _context.Categories
 			.IgnoreQueryFilters()
@@ -196,7 +200,22 @@ public class CategoryService : ICategoryService
 
 		if (category == null)
 		{
-			return false;
+			return ServiceResult<bool>.Failure("Category does not exist or is not deleted.");
+		}
+
+		var nameKey = category.Name.Trim().ToLower();
+
+		var duplicateExists = await _context.Categories
+			.IgnoreQueryFilters()
+			.AnyAsync(otherCategory =>
+				otherCategory.Id != category.Id &&
+				!otherCategory.IsDeleted &&
+				otherCategory.Name.ToLower() == nameKey);
+
+		if (duplicateExists)
+		{
+			return ServiceResult<bool>.Failure(
+				"Cannot restore category because another active category with the same name already exists.");
 		}
 
 		category.IsDeleted = false;
@@ -205,13 +224,14 @@ public class CategoryService : ICategoryService
 
 		await _context.SaveChangesAsync();
 
-		return true;
+		return ServiceResult<bool>.Success(true);
 	}
 
 	public async Task<PagedResultDto<CategoryDto>> GetDeletedAsync(PagedRequestDto input)
 	{
 		var query = _context.Categories
 			.IgnoreQueryFilters()
+			.AsNoTracking()
 			.Where(category => category.IsDeleted);
 
 		if (!string.IsNullOrWhiteSpace(input.SearchTerm))

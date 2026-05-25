@@ -17,6 +17,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/by-product/{productId}
 	[HttpGet("by-product/{productId:int}")]
+	[ProducesResponseType(typeof(PagedResultDto<ProductVariantDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetByProductId(
 		int productId,
 		[FromQuery] PagedRequestDto input)
@@ -28,6 +29,8 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/{id}
 	[HttpGet("{id:int}")]
+	[ProducesResponseType(typeof(ProductVariantDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<ProductVariantDto>> GetById(int id)
 	{
 		var variant = await _productVariantService.GetByIdAsync(id);
@@ -42,6 +45,8 @@ public class ProductVariantsController : ControllerBase
 
 	// POST: /api/ProductVariants
 	[HttpPost]
+	[ProducesResponseType(typeof(ProductVariantDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<ProductVariantDto>> Create([FromBody] CreateProductVariantDto dto)
 	{
 		var result = await _productVariantService.CreateAsync(dto);
@@ -51,11 +56,21 @@ public class ProductVariantsController : ControllerBase
 			return BadRequest(result.ErrorMessage);
 		}
 
-		return Ok(result.Data);
+		if (result.Data == null)
+		{
+			return BadRequest("Variant was created but could not be loaded.");
+		}
+
+		return CreatedAtAction(
+			nameof(GetById),
+			new { id = result.Data.Id },
+			result.Data);
 	}
 
 	// POST: /api/ProductVariants/bulk
 	[HttpPost("bulk")]
+	[ProducesResponseType(typeof(List<ProductVariantDto>), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<List<ProductVariantDto>>> BulkCreate([FromBody] CreateBulkProductVariantsDto dto)
 	{
 		var result = await _productVariantService.BulkCreateAsync(dto);
@@ -70,6 +85,8 @@ public class ProductVariantsController : ControllerBase
 
 	// POST: /api/ProductVariants/generate
 	[HttpPost("generate")]
+	[ProducesResponseType(typeof(List<ProductVariantDto>), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<List<ProductVariantDto>>> Generate([FromBody] GenerateProductVariantsDto dto)
 	{
 		var result = await _productVariantService.GenerateAsync(dto);
@@ -84,6 +101,8 @@ public class ProductVariantsController : ControllerBase
 
 	// PUT: /api/ProductVariants/{id}
 	[HttpPut("{id:int}")]
+	[ProducesResponseType(typeof(ProductVariantDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
 	public async Task<ActionResult<ProductVariantDto>> Update(int id, [FromBody] UpdateProductVariantDto dto)
 	{
 		var result = await _productVariantService.UpdateAsync(id, dto);
@@ -98,6 +117,9 @@ public class ProductVariantsController : ControllerBase
 
 	// POST: /api/ProductVariants/{id}/adjust-stock
 	[HttpPost("{id:int}/adjust-stock")]
+	[ProducesResponseType(typeof(ProductVariantDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult<ProductVariantDto>> AdjustStock(int id, [FromBody] AdjustProductVariantStockDto dto)
 	{
 		var result = await _productVariantService.AdjustStockAsync(id, dto);
@@ -117,6 +139,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/{id}/stock-movements
 	[HttpGet("{id:int}/stock-movements")]
+	[ProducesResponseType(typeof(PagedResultDto<StockMovementDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<StockMovementDto>>> GetStockMovements(
 		int id,
 		[FromQuery] PagedRequestDto input)
@@ -128,6 +151,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/available-colors/{productId}
 	[HttpGet("available-colors/{productId:int}")]
+	[ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<List<string>>> GetAvailableColors(int productId)
 	{
 		var colors = await _productVariantService.GetAvailableColorsAsync(productId);
@@ -137,6 +161,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/available-sizes/{productId}
 	[HttpGet("available-sizes/{productId:int}")]
+	[ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<List<string>>> GetAvailableSizes(int productId)
 	{
 		var sizes = await _productVariantService.GetAvailableSizesAsync(productId);
@@ -146,6 +171,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/available-colors-by-size/{productId}/{size}
 	[HttpGet("available-colors-by-size/{productId:int}/{size}")]
+	[ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<List<string>>> GetAvailableColorsBySize(int productId, string size)
 	{
 		var colors = await _productVariantService.GetAvailableColorsBySizeAsync(productId, size);
@@ -155,6 +181,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/available-sizes-by-color/{productId}/{color}
 	[HttpGet("available-sizes-by-color/{productId:int}/{color}")]
+	[ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<List<string>>> GetAvailableSizesByColor(int productId, string color)
 	{
 		var sizes = await _productVariantService.GetAvailableSizesByColorAsync(productId, color);
@@ -164,13 +191,20 @@ public class ProductVariantsController : ControllerBase
 
 	// DELETE: /api/ProductVariants/{id}
 	[HttpDelete("{id:int}")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Delete(int id)
 	{
-		var deleted = await _productVariantService.DeleteAsync(id);
+		var result = await _productVariantService.DeleteAsync(id);
 
-		if (!deleted)
+		if (!result.IsSuccess)
 		{
-			return NotFound();
+			if (result.ErrorMessage == "Variant does not exist.")
+			{
+				return NotFound(result.ErrorMessage);
+			}
+
+			return BadRequest(result.ErrorMessage);
 		}
 
 		return NoContent();
@@ -178,6 +212,7 @@ public class ProductVariantsController : ControllerBase
 
 	// GET: /api/ProductVariants/deleted
 	[HttpGet("deleted")]
+	[ProducesResponseType(typeof(PagedResultDto<ProductVariantDto>), StatusCodes.Status200OK)]
 	public async Task<ActionResult<PagedResultDto<ProductVariantDto>>> GetDeleted([FromQuery] PagedRequestDto input)
 	{
 		var variants = await _productVariantService.GetDeletedAsync(input);
@@ -187,6 +222,9 @@ public class ProductVariantsController : ControllerBase
 
 	// POST: /api/ProductVariants/{id}/restore
 	[HttpPost("{id:int}/restore")]
+	[ProducesResponseType(StatusCodes.Status204NoContent)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
 	public async Task<ActionResult> Restore(int id)
 	{
 		var result = await _productVariantService.RestoreAsync(id);

@@ -20,7 +20,7 @@ public interface IProductVariantService
 
 	Task<PagedResultDto<StockMovementDto>> GetStockMovementsAsync(int variantId, PagedRequestDto input);
 
-	Task<bool> DeleteAsync(int id);
+	Task<ServiceResult<bool>> DeleteAsync(int id);
 
 	Task<ServiceResult<bool>> RestoreAsync(int id);
 
